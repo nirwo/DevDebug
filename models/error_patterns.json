@@ -1,0 +1,9 @@
+{
+  "exception": "(?i)exception|error|failure|failed|traceback",
+  "timeout": "(?i)timeout|timed out|connection refused",
+  "memory": "(?i)out of memory|memory (error|exceeded|limit)",
+  "permission": "(?i)permission denied|access denied|unauthorized",
+  "syntax": "(?i)syntax error|parse error|invalid syntax",
+  "dependency": "(?i)module not found|import error|cannot find|not installed",
+  "network": "(?i)network (error|unreachable)|connection (refused|reset|error)"
+}

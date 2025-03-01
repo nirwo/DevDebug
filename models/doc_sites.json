@@ -1,0 +1,28 @@
+{
+  "kubernetes": [
+    "kubernetes.io/docs",
+    "k8s.io"
+  ],
+  "docker": [
+    "docs.docker.com"
+  ],
+  "python": [
+    "docs.python.org",
+    "flask.palletsprojects.com",
+    "django-docs.readthedocs.io"
+  ],
+  "java": [
+    "docs.oracle.com/javase",
+    "docs.spring.io"
+  ],
+  "database": [
+    "dev.mysql.com/doc",
+    "postgresql.org/docs",
+    "mongodb.com/docs"
+  ],
+  "cloud": [
+    "docs.aws.amazon.com",
+    "cloud.google.com/docs",
+    "docs.microsoft.com/azure"
+  ]
+}

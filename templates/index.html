@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Debug Wizard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-bug-slash"></i>
+                <h1>DevOps Debug Wizard</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active" id="nav-analyze">Analyze</a></li>
+                    <li><a href="#" id="nav-history">History</a></li>
+                    <li><a href="#" id="nav-settings">Settings</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main class="app-main">
+            <!-- Welcome Screen -->
+            <section id="welcome-screen" class="screen active">
+                <div class="welcome-content">
+                    <div class="welcome-icon">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h2>Welcome to DevOps Debug Wizard</h2>
+                    <p>Your intelligent assistant for analyzing and fixing DevOps failures quickly.</p>
+                    <div class="features">
+                        <div class="feature">
+                            <i class="fas fa-bolt"></i>
+                            <span>Fast Analysis</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-brain"></i>
+                            <span>AI-Powered</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Self-Learning</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-robot"></i>
+                            <span>Autonomous</span>
+                        </div>
+                    </div>
+                    <button id="start-wizard" class="btn btn-primary">Start Debugging</button>
+                </div>
+            </section>
+            
+            <!-- Wizard Step 1: Log Source -->
+            <section id="step-log-source" class="screen wizard-step">
+                <div class="wizard-header">
+                    <h2>Step 1: Provide Log Source</h2>
+                    <div class="wizard-progress">
+                        <div class="progress-step active"></div>
+                        <div class="progress-step"></div>
+                        <div class="progress-step"></div>
+                        <div class="progress-step"></div>
+                    </div>
+                </div>
+                <div class="wizard-content">
+                    <div class="source-options">
+                        <div class="source-option" id="option-url">
+                            <i class="fas fa-link"></i>
+                            <h3>URL</h3>
+                            <p>Provide a URL to a log file or error page</p>
+                        </div>
+                        <div class="source-option" id="option-paste">
+                            <i class="fas fa-paste"></i>
+                            <h3>Paste Log</h3>
+                            <p>Paste log content directly</p>
+                        </div>
+                        <div class="source-option" id="option-upload">
+                            <i class="fas fa-upload"></i>
+                            <h3>Upload File</h3>
+                            <p>Upload a log file from your computer</p>
+                        </div>
+                    </div>
+                    
+                    <div class="source-inputs">
+                        <div id="url-input" class="source-input-panel">
+                            <label for="log-url">Log URL:</label>
+                            <input type="url" id="log-url" placeholder="https://example.com/logs/error.log">
+                            <p class="hint">Enter the URL of a log file, GitHub issue, or error page</p>
+                        </div>
+                        
+                        <div id="paste-input" class="source-input-panel">
+                            <label for="log-content">Log Content:</label>
+                            <textarea id="log-content" placeholder="Paste your log content here..."></textarea>
+                            <p class="hint">Paste the full log content including any error messages and context</p>
+                        </div>
+                        
+                        <div id="upload-input" class="source-input-panel">
+                            <label for="log-file">Log File:</label>
+                            <div class="file-upload-area">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drag & drop a file here or</p>
+                                <label for="log-file" class="btn btn-outline">Browse Files</label>
+                                <input type="file" id="log-file" hidden>
+                                <p class="selected-file"></p>
+                            </div>
+                            <p class="hint">Upload a log file (.log, .txt, or any text-based format)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button id="back-to-welcome" class="btn btn-outline">Back</button>
+                        <button id="next-to-analyzing" class="btn btn-primary">Next</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Wizard Step 2: Analyzing -->
+            <section id="step-analyzing" class="screen wizard-step">
+                <div class="wizard-header">
+                    <h2>Step 2: Analyzing Log</h2>
+                    <div class="wizard-progress">
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step active"></div>
+                        <div class="progress-step"></div>
+                        <div class="progress-step"></div>
+                    </div>
+                </div>
+                <div class="wizard-content">
+                    <div class="analyzing-animation">
+                        <div class="spinner"></div>
+                        <div class="analyzing-text">
+                            <h3>Analyzing your log...</h3>
+                            <p id="analysis-status">Identifying error patterns</p>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button id="back-to-log-source" class="btn btn-outline">Back</button>
+                        <button id="cancel-analysis" class="btn btn-outline btn-danger">Cancel</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Wizard Step 3: Results -->
+            <section id="step-results" class="screen wizard-step">
+                <div class="wizard-header">
+                    <h2>Step 3: Analysis Results</h2>
+                    <div class="wizard-progress">
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step active"></div>
+                        <div class="progress-step"></div>
+                    </div>
+                </div>
+                <div class="wizard-content">
+                    <div class="results-container">
+                        <div class="results-summary">
+                            <div class="summary-item">
+                                <div class="summary-label">Technology</div>
+                                <div class="summary-value" id="result-technology">Unknown</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Error Type</div>
+                                <div class="summary-value" id="result-error-type">Unknown</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Severity</div>
+                                <div class="summary-value severity" id="result-severity">Medium</div>
+                            </div>
+                        </div>
+                        
+                        <div class="results-details">
+                            <div class="result-section">
+                                <h3>Error Message</h3>
+                                <div class="code-block" id="result-error-message">No error message detected</div>
+                            </div>
+                            
+                            <div class="result-section">
+                                <h3>Context</h3>
+                                <div class="code-block" id="result-context">No context available</div>
+                            </div>
+                            
+                            <div class="result-section">
+                                <h3>Potential Root Causes</h3>
+                                <ul class="root-causes-list" id="result-root-causes">
+                                    <li>No root causes identified</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button id="back-to-analyzing" class="btn btn-outline">Back</button>
+                        <button id="next-to-solutions" class="btn btn-primary">View Solutions</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Wizard Step 4: Solutions -->
+            <section id="step-solutions" class="screen wizard-step">
+                <div class="wizard-header">
+                    <h2>Step 4: Recommended Solutions</h2>
+                    <div class="wizard-progress">
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step completed"></div>
+                        <div class="progress-step active"></div>
+                    </div>
+                </div>
+                <div class="wizard-content">
+                    <div class="solutions-container" id="solutions-list">
+                        <!-- Solutions will be inserted here dynamically -->
+                        <div class="no-solutions">
+                            <i class="fas fa-search"></i>
+                            <p>No solutions found. The system is still learning about this type of error.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feedback-section">
+                        <h3>Did these solutions help?</h3>
+                        <div class="feedback-options">
+                            <button id="feedback-yes" class="btn btn-outline btn-sm">
+                                <i class="fas fa-thumbs-up"></i> Yes
+                            </button>
+                            <button id="feedback-no" class="btn btn-outline btn-sm">
+                                <i class="fas fa-thumbs-down"></i> No
+                            </button>
+                        </div>
+                        <div class="feedback-form">
+                            <textarea id="feedback-text" placeholder="Share what worked or what didn't work..."></textarea>
+                            <button id="submit-feedback" class="btn btn-primary btn-sm">Submit Feedback</button>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button id="back-to-results" class="btn btn-outline">Back to Results</button>
+                        <button id="start-new-analysis" class="btn btn-primary">Start New Analysis</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="app-footer">
+            <p>&copy; 2025 DevOps Debug Wizard | <a href="#" id="privacy-link">Privacy Policy</a> | <a href="#" id="terms-link">Terms of Service</a></p>
+        </footer>
+    </div>
+    
+    <!-- Templates for dynamic content -->
+    <template id="solution-template">
+        <div class="solution-card">
+            <div class="solution-header">
+                <h3 class="solution-title">Solution Title</h3>
+                <div class="solution-meta">
+                    <span class="solution-success-rate">
+                        <i class="fas fa-check-circle"></i>
+                        <span class="rate-value">95%</span> success rate
+                    </span>
+                </div>
+            </div>
+            <div class="solution-content">
+                <p class="solution-description">Solution description goes here...</p>
+            </div>
+            <div class="solution-actions">
+                <button class="btn btn-outline btn-sm solution-copy">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+                <button class="btn btn-primary btn-sm solution-apply">
+                    <i class="fas fa-check"></i> Mark as Applied
+                </button>
+            </div>
+        </div>
+    </template>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
