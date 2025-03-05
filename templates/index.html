@@ -34,6 +34,36 @@
             font-size: 20px;
             cursor: pointer;
         }
+        
+        /* Loading indicator improvements */
+        .loading-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #loading-message {
+            color: var(--text-color);
+            font-size: 16px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -95,16 +125,21 @@
                     </div>
                 </div>
                 <div class="wizard-content">
+                    <div id="loading" class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p id="loading-message">Analyzing log...</p>
+                    </div>
+                    
+                    <div id="error-container" class="error-container" style="display: none;">
+                        <div class="error-content">
+                            <p id="error-message"></p>
+                            <button id="close-error">×</button>
+                        </div>
+                    </div>
+                    
                     <div class="log-input">
                         <h2>Step 1: Provide Log</h2>
                         <p>Enter log URL, paste log content, or upload a log file:</p>
-                        
-                        <div id="error-container" class="error-container" style="display: none;">
-                            <div class="error-content">
-                                <p id="error-message"></p>
-                                <button id="close-error">×</button>
-                            </div>
-                        </div>
                         
                         <div class="source-options">
                             <div class="source-option" id="option-url">
@@ -170,6 +205,18 @@
                     </div>
                 </div>
                 <div class="wizard-content">
+                    <div id="loading" class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p id="loading-message">Analyzing log...</p>
+                    </div>
+                    
+                    <div id="error-container" class="error-container" style="display: none;">
+                        <div class="error-content">
+                            <p id="error-message"></p>
+                            <button id="close-error">×</button>
+                        </div>
+                    </div>
+                    
                     <div class="analyzing-animation">
                         <div class="spinner"></div>
                         <div class="analyzing-text">
@@ -197,6 +244,18 @@
                     </div>
                 </div>
                 <div class="wizard-content">
+                    <div id="loading" class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p id="loading-message">Analyzing log...</p>
+                    </div>
+                    
+                    <div id="error-container" class="error-container" style="display: none;">
+                        <div class="error-content">
+                            <p id="error-message"></p>
+                            <button id="close-error">×</button>
+                        </div>
+                    </div>
+                    
                     <div class="results-container">
                         <div class="results-summary">
                             <div class="summary-item">
@@ -252,6 +311,18 @@
                     </div>
                 </div>
                 <div class="wizard-content">
+                    <div id="loading" class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p id="loading-message">Analyzing log...</p>
+                    </div>
+                    
+                    <div id="error-container" class="error-container" style="display: none;">
+                        <div class="error-content">
+                            <p id="error-message"></p>
+                            <button id="close-error">×</button>
+                        </div>
+                    </div>
+                    
                     <div class="solutions-container" id="solutions-list">
                         <!-- Solutions will be inserted here dynamically -->
                         <div class="no-solutions">

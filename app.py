@@ -36,26 +36,67 @@ def analyze_log():
         log_url = data.get('log_url')
         log_content = data.get('log_content')
         
-        if log_url:
-            # Fetch log from URL
-            log_content = web_scraper.fetch_content(log_url)
+        # Set a processing timeout for long-running operations
+        def process_with_timeout(timeout=15):
+            """Run log processing with a timeout to prevent hanging"""
+            import threading
+            import time
+            
+            result = {'success': False, 'error': 'Analysis timed out after {} seconds'.format(timeout)}
+            
+            def process_log():
+                nonlocal result
+                try:
+                    # Get log content if provided by URL
+                    nonlocal log_content
+                    if log_url and not log_content:
+                        log_content = web_scraper.fetch_content(log_url)
+                    
+                    if not log_content:
+                        result = {'success': False, 'error': 'No log content provided or could not fetch from URL'}
+                        return
+                    
+                    # Analyze the log
+                    analysis_result = log_analyzer.analyze(log_content)
+                    
+                    # Get solution suggestions
+                    solutions = knowledge_base.get_solutions(analysis_result['error_type'], analysis_result.get('context', []))
+                    
+                    # Learn from this analysis
+                    knowledge_base.learn(log_content, analysis_result, data.get('feedback'))
+                    
+                    result = {
+                        'success': True, 
+                        'analysis': analysis_result,
+                        'solutions': solutions
+                    }
+                except Exception as e:
+                    app.logger.error(f"Error in process_log: {str(e)}")
+                    result = {'success': False, 'error': f'Analysis failed: {str(e)}'}
+            
+            # Start processing thread
+            thread = threading.Thread(target=process_log)
+            thread.daemon = True
+            thread.start()
+            
+            # Wait with timeout
+            start_time = time.time()
+            while thread.is_alive() and (time.time() - start_time) < timeout:
+                time.sleep(0.1)
+            
+            return result
         
-        if not log_content:
-            return jsonify({'error': 'No log content provided or could not fetch from URL'}), 400
+        # Run the processing with timeout
+        processing_result = process_with_timeout()
         
-        # Analyze the log
-        analysis_result = log_analyzer.analyze(log_content)
-        
-        # Get solution suggestions
-        solutions = knowledge_base.get_solutions(analysis_result['error_type'], analysis_result.get('context', []))
-        
-        # Learn from this analysis
-        knowledge_base.learn(log_content, analysis_result, data.get('feedback'))
-        
+        if not processing_result.get('success', False):
+            return jsonify({'error': processing_result.get('error', 'Unknown error during analysis')}), 500
+            
         return jsonify({
-            'analysis': analysis_result,
-            'solutions': solutions
+            'analysis': processing_result['analysis'],
+            'solutions': processing_result['solutions']
         })
+            
     except Exception as e:
         app.logger.error(f"Error analyzing log: {str(e)}")
         return jsonify({'error': f'Analysis failed: {str(e)}'}), 500

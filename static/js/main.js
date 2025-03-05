@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const analysisResult = document.getElementById('analysis-result');
         const solutionsResult = document.getElementById('solutions-result');
         const loadingIndicator = document.getElementById('loading');
+        const loadingMessage = document.getElementById('loading-message');
         
         let logContent = logContentInput.value;
         let logUrl = logUrlInput.value;
@@ -242,13 +243,27 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Show loading indicator
+        // Show loading indicator with initial message
         loadingIndicator.style.display = 'block';
+        loadingMessage.textContent = 'Preparing log data...';
         resultContainer.style.display = 'none';
+        
+        // Set a timeout to show "still analyzing" message after 5 seconds
+        const analysisTimeout = setTimeout(() => {
+            loadingMessage.textContent = 'Still analyzing... This may take a bit longer for complex logs.';
+        }, 5000);
+        
+        // Set a timeout for overall analysis (30 seconds)
+        const overallTimeout = setTimeout(() => {
+            clearTimeout(analysisTimeout);
+            loadingIndicator.style.display = 'none';
+            showError('Analysis is taking longer than expected. Please try with a smaller log or check your connection.');
+        }, 30000);
         
         try {
             // If file was uploaded, read its contents
             if (uploadedFile) {
+                loadingMessage.textContent = 'Reading uploaded file...';
                 logContent = await readFileContent(uploadedFile);
             }
             
@@ -259,15 +274,23 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             console.log('Sending request with data:', requestData);
+            loadingMessage.textContent = 'Sending log for analysis...';
             
-            // Send request to backend
+            // Send request to backend with a fetch timeout of 20 seconds
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(requestData)
+                body: JSON.stringify(requestData),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
+            loadingMessage.textContent = 'Processing analysis results...';
             
             // Log raw response for debugging
             const rawResponse = await response.text();
@@ -297,9 +320,16 @@ document.addEventListener('DOMContentLoaded', function() {
             resultContainer.style.display = 'block';
         } catch (error) {
             console.error('Error during analysis:', error);
-            showError(`Error analyzing log: ${error.message}`);
+            
+            if (error.name === 'AbortError') {
+                showError('The request timed out. The server is taking too long to respond.');
+            } else {
+                showError(`Error analyzing log: ${error.message}`);
+            }
         } finally {
-            // Hide loading indicator
+            // Clear timeouts and hide loading indicator
+            clearTimeout(analysisTimeout);
+            clearTimeout(overallTimeout);
             loadingIndicator.style.display = 'none';
         }
     }

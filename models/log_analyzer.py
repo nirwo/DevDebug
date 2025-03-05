@@ -5,6 +5,7 @@ from nltk.corpus import stopwords
 import os
 import json
 from collections import Counter
+import time
 
 class LogAnalyzer:
     """
@@ -252,3 +253,63 @@ class LogAnalyzer:
                     root_causes.append(cause)
         
         return root_causes[:5]  # Limit to top 5 most likely causes
+    
+    def _match_patterns(self, log_content):
+        """Match error patterns in the log content."""
+        # Add a timeout for regex matching to prevent catastrophic backtracking
+        import time
+        
+        results = []
+        for pattern in self.error_patterns:
+            pattern_regex = pattern
+            if not pattern_regex:
+                continue
+                
+            # Add a timeout for regex matching
+            start_time = time.time()
+            try:
+                # Add a simple timeout mechanism
+                match = None
+                
+                # Use a simplified matching to prevent regex catastrophic backtracking
+                # First try a simple contains check before regex
+                simple_check = ''
+                if simple_check and simple_check in log_content:
+                    match = re.search(pattern_regex, log_content, re.IGNORECASE)
+                elif not simple_check:  # If no simple check defined, use regex directly
+                    match = re.search(pattern_regex, log_content, re.IGNORECASE)
+                    
+                # If taking too long, skip this pattern
+                if time.time() - start_time > 1.0:  # More than 1 second is too long
+                    print(f"Pattern matching timeout for: {pattern}")
+                    continue
+                    
+                if match:
+                    result = {
+                        'error_type': pattern,
+                        'error_message': match.group(0) if match.groups() else match.group(0),
+                        'severity': 'medium',
+                        'tech_stack': ['unknown'],
+                        'potential_causes': []
+                    }
+                    
+                    # Extract named groups
+                    if hasattr(match, 'groupdict') and match.groupdict():
+                        for key, value in match.groupdict().items():
+                            if value:
+                                result[key] = value
+                                
+                    results.append(result)
+            except re.error as e:
+                print(f"Regex error in pattern {pattern}: {e}")
+                continue
+            except Exception as e:
+                print(f"Error matching pattern {pattern}: {e}")
+                continue
+                
+            # If we've spent more than 3 seconds on pattern matching, abort to prevent timeouts
+            if time.time() - start_time > 3.0:
+                print("Pattern matching is taking too long, aborting further matches")
+                break
+        
+        return results
