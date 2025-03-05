@@ -21,20 +21,24 @@ A powerful online tool for DevOps and SRE teams to analyze and debug failures qu
 ### Installation
 
 1. Clone the repository:
+
    ```
    git clone https://github.com/yourusername/devops-debug-wizard.git
    cd devops-debug-wizard
    ```
 
 2. Install dependencies:
+
    ```
    pip install -r requirements.txt
    ```
 
 3. Copy the example environment file and configure your settings:
+
    ```
    cp .env.example .env
    ```
+
    Edit the `.env` file to set your preferences.
 
 4. Run the application:
