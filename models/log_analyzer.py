@@ -129,17 +129,34 @@ class LogAnalyzer:
     
     def _extract_context(self, log_content, error_message):
         """Extract the context around the error message."""
-        if not error_message or error_message not in log_content:
+        if not error_message or not log_content:
             return []
+            
+        if error_message not in log_content:
+            # Try to find a partial match
+            error_words = error_message.split()
+            if len(error_words) > 3:
+                # Try with a substring of the error message
+                partial_error = ' '.join(error_words[:3])
+                if partial_error in log_content:
+                    error_message = partial_error
+                else:
+                    # Return the first few lines as context if no match
+                    lines = log_content.split('\n')
+                    return lines[:min(10, len(lines))]
         
         lines = log_content.split('\n')
         
         # Find the line with the error message
-        error_line_idx = next((i for i, line in enumerate(lines) 
-                              if error_message in line), -1)
+        error_line_idx = -1
+        for i, line in enumerate(lines):
+            if error_message in line:
+                error_line_idx = i
+                break
         
         if error_line_idx == -1:
-            return []
+            # Return the first few lines as context if no match
+            return lines[:min(10, len(lines))]
         
         # Get context (5 lines before and after the error)
         start_idx = max(0, error_line_idx - 5)

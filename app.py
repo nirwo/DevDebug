@@ -1,4 +1,9 @@
 import os
+import sys
+
+# Add the project root to Python path to make imports work
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from models.log_analyzer import LogAnalyzer
@@ -23,30 +28,37 @@ def index():
 @app.route('/api/analyze', methods=['POST'])
 def analyze_log():
     """Analyze log from a URL or direct input."""
-    data = request.json
-    log_url = data.get('log_url')
-    log_content = data.get('log_content')
-    
-    if log_url:
-        # Fetch log from URL
-        log_content = web_scraper.fetch_content(log_url)
-    
-    if not log_content:
-        return jsonify({'error': 'No log content provided'}), 400
-    
-    # Analyze the log
-    analysis_result = log_analyzer.analyze(log_content)
-    
-    # Get solution suggestions
-    solutions = knowledge_base.get_solutions(analysis_result['error_type'], analysis_result['context'])
-    
-    # Learn from this analysis
-    knowledge_base.learn(log_content, analysis_result, data.get('feedback'))
-    
-    return jsonify({
-        'analysis': analysis_result,
-        'solutions': solutions
-    })
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+            
+        log_url = data.get('log_url')
+        log_content = data.get('log_content')
+        
+        if log_url:
+            # Fetch log from URL
+            log_content = web_scraper.fetch_content(log_url)
+        
+        if not log_content:
+            return jsonify({'error': 'No log content provided or could not fetch from URL'}), 400
+        
+        # Analyze the log
+        analysis_result = log_analyzer.analyze(log_content)
+        
+        # Get solution suggestions
+        solutions = knowledge_base.get_solutions(analysis_result['error_type'], analysis_result.get('context', []))
+        
+        # Learn from this analysis
+        knowledge_base.learn(log_content, analysis_result, data.get('feedback'))
+        
+        return jsonify({
+            'analysis': analysis_result,
+            'solutions': solutions
+        })
+    except Exception as e:
+        app.logger.error(f"Error analyzing log: {str(e)}")
+        return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
 
 @app.route('/api/learn', methods=['POST'])
 def learn():
@@ -85,5 +97,6 @@ def scrape():
     return jsonify({'success': False, 'error': 'No knowledge extracted'})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    port = int(os.environ.get('PORT', 5002))  # Changed from 5001 to 5002
+    debug = os.environ.get('DEBUG', 'true').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug)

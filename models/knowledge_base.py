@@ -26,16 +26,23 @@ class KnowledgeBase:
     def _load_db(self):
         """Load the knowledge database from a JSON file."""
         if os.path.exists(self.db_file):
-            with open(self.db_file, 'r') as f:
-                return json.load(f)
+            try:
+                with open(self.db_file, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                # Handle corrupted or missing file
+                print(f"Warning: Could not load knowledge DB from {self.db_file}. Creating new database.")
         
-        # Create a new database if it doesn't exist
+        # Create a new database if it doesn't exist or can't be loaded
         db = {
             'solutions': [],
             'error_types': {},
             'technologies': {},
             'last_updated': time.time()
         }
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
         
         with open(self.db_file, 'w') as f:
             json.dump(db, f, indent=2)
@@ -52,10 +59,11 @@ class KnowledgeBase:
     def _update_vectors(self):
         """Update vector representations of solutions for similarity matching."""
         if not self.db['solutions']:
+            self.vectors = None
             return
         
         # Create a corpus of error descriptions and contexts
-        corpus = [f"{solution['error_type']} {solution['error_message']} {' '.join(solution['context'])}"
+        corpus = [f"{solution['error_type']} {solution['error_message']} {' '.join(solution.get('context', []))}"
                  for solution in self.db['solutions']]
         
         # Fit the vectorizer and transform the corpus
@@ -79,11 +87,19 @@ class KnowledgeBase:
         # If we have less than 5 solutions, just return them all
         if len(self.db['solutions']) < 5:
             return sorted(self.db['solutions'], 
-                         key=lambda x: x['success_rate'], 
+                         key=lambda x: x.get('success_rate', 0), 
                          reverse=True)[:limit]
         
+        if not hasattr(self, 'vectors') or self.vectors is None:
+            self._update_vectors()
+            # If still no vectors, just return sorted solutions
+            if not hasattr(self, 'vectors') or self.vectors is None:
+                return sorted(self.db['solutions'], 
+                            key=lambda x: x.get('success_rate', 0), 
+                            reverse=True)[:limit]
+        
         # Create a query vector
-        query = f"{error_type} {' '.join(context)}"
+        query = f"{error_type} {' '.join(context if context else [])}"
         query_vector = self.vectorizer.transform([query])
         
         # Calculate similarity scores

@@ -4,6 +4,7 @@ import re
 import json
 import os
 from urllib.parse import urlparse
+import logging
 
 class WebScraper:
     """
@@ -17,6 +18,7 @@ class WebScraper:
         }
         self.session = requests.Session()
         self.session.headers.update(self.headers)
+        self.logger = logging.getLogger(__name__)
         
         # Load known documentation sites
         self.doc_sites = self._load_doc_sites()
@@ -66,67 +68,26 @@ class WebScraper:
             return json.load(f)
     
     def fetch_content(self, url):
-        """
-        Fetch content from a URL.
-        
-        Args:
-            url (str): The URL to fetch content from
+        """Fetch content from a URL."""
+        if not url:
+            return None
             
-        Returns:
-            str: The content of the URL
-        """
         try:
             response = self.session.get(url, timeout=10)
-            response.raise_for_status()
+            response.raise_for_status()  # Raise an exception for 4XX/5XX responses
             
-            # Check if it's a raw log file or HTML
-            content_type = response.headers.get('Content-Type', '')
-            
-            if 'text/html' in content_type:
-                # Parse HTML to extract log content
-                return self._extract_log_from_html(response.text, url)
-            else:
-                # Assume it's a raw log file
+            # Check if it's likely a text-based content
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'text' in content_type or 'json' in content_type or 'xml' in content_type:
                 return response.text
                 
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching URL {url}: {e}")
+            # For binary content, log a warning and return a placeholder
+            self.logger.warning(f"Binary content detected at {url}")
+            return f"Binary content from {url} (could not parse as text)"
+            
+        except requests.RequestException as e:
+            self.logger.error(f"Error fetching content from {url}: {str(e)}")
             return None
-    
-    def _extract_log_from_html(self, html_content, url):
-        """Extract log content from HTML."""
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # Look for common log containers
-        log_containers = soup.select('pre, code, .log, .console, .terminal')
-        
-        if log_containers:
-            # Join all log container contents
-            return '\n'.join(container.get_text() for container in log_containers)
-        
-        # Check if this is a GitHub issue or similar platform
-        if 'github.com' in url or 'gitlab.com' in url:
-            # Look for issue description and comments
-            issue_content = []
-            
-            # Issue description
-            description = soup.select_one('.comment-body, .markdown-body')
-            if description:
-                issue_content.append(description.get_text())
-            
-            # Comments
-            comments = soup.select('.comment-body, .markdown-body')
-            for comment in comments:
-                issue_content.append(comment.get_text())
-            
-            return '\n'.join(issue_content)
-        
-        # If no specific log containers found, return the body text
-        body = soup.body
-        if body:
-            return body.get_text()
-        
-        return html_content
     
     def extract_knowledge(self, content, url):
         """
@@ -173,6 +134,41 @@ class WebScraper:
                 return 'documentation'
         
         return 'generic'
+    
+    def _extract_log_from_html(self, html_content, url):
+        """Extract log content from HTML."""
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Look for common log containers
+        log_containers = soup.select('pre, code, .log, .console, .terminal')
+        
+        if log_containers:
+            # Join all log container contents
+            return '\n'.join(container.get_text() for container in log_containers)
+        
+        # Check if this is a GitHub issue or similar platform
+        if 'github.com' in url or 'gitlab.com' in url:
+            # Look for issue description and comments
+            issue_content = []
+            
+            # Issue description
+            description = soup.select_one('.comment-body, .markdown-body')
+            if description:
+                issue_content.append(description.get_text())
+            
+            # Comments
+            comments = soup.select('.comment-body, .markdown-body')
+            for comment in comments:
+                issue_content.append(comment.get_text())
+            
+            return '\n'.join(issue_content)
+        
+        # If no specific log containers found, return the body text
+        body = soup.body
+        if body:
+            return body.get_text()
+        
+        return html_content
     
     def _extract_from_documentation(self, content, url):
         """Extract knowledge from documentation."""

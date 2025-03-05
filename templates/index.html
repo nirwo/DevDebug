@@ -9,6 +9,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Error container */
+        .error-container {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            color: #b71c1c;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .error-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #close-error {
+            background: none;
+            border: none;
+            color: #b71c1c;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -69,53 +95,65 @@
                     </div>
                 </div>
                 <div class="wizard-content">
-                    <div class="source-options">
-                        <div class="source-option" id="option-url">
-                            <i class="fas fa-link"></i>
-                            <h3>URL</h3>
-                            <p>Provide a URL to a log file or error page</p>
-                        </div>
-                        <div class="source-option" id="option-paste">
-                            <i class="fas fa-paste"></i>
-                            <h3>Paste Log</h3>
-                            <p>Paste log content directly</p>
-                        </div>
-                        <div class="source-option" id="option-upload">
-                            <i class="fas fa-upload"></i>
-                            <h3>Upload File</h3>
-                            <p>Upload a log file from your computer</p>
-                        </div>
-                    </div>
-                    
-                    <div class="source-inputs">
-                        <div id="url-input" class="source-input-panel">
-                            <label for="log-url">Log URL:</label>
-                            <input type="url" id="log-url" placeholder="https://example.com/logs/error.log">
-                            <p class="hint">Enter the URL of a log file, GitHub issue, or error page</p>
-                        </div>
+                    <div class="log-input">
+                        <h2>Step 1: Provide Log</h2>
+                        <p>Enter log URL, paste log content, or upload a log file:</p>
                         
-                        <div id="paste-input" class="source-input-panel">
-                            <label for="log-content">Log Content:</label>
-                            <textarea id="log-content" placeholder="Paste your log content here..."></textarea>
-                            <p class="hint">Paste the full log content including any error messages and context</p>
-                        </div>
-                        
-                        <div id="upload-input" class="source-input-panel">
-                            <label for="log-file">Log File:</label>
-                            <div class="file-upload-area">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Drag & drop a file here or</p>
-                                <label for="log-file" class="btn btn-outline">Browse Files</label>
-                                <input type="file" id="log-file" hidden>
-                                <p class="selected-file"></p>
+                        <div id="error-container" class="error-container" style="display: none;">
+                            <div class="error-content">
+                                <p id="error-message"></p>
+                                <button id="close-error">×</button>
                             </div>
-                            <p class="hint">Upload a log file (.log, .txt, or any text-based format)</p>
                         </div>
-                    </div>
-                    
-                    <div class="wizard-actions">
-                        <button id="back-to-welcome" class="btn btn-outline">Back</button>
-                        <button id="next-to-analyzing" class="btn btn-primary">Next</button>
+                        
+                        <div class="source-options">
+                            <div class="source-option" id="option-url">
+                                <i class="fas fa-link"></i>
+                                <h3>URL</h3>
+                                <p>Provide a URL to a log file or error page</p>
+                            </div>
+                            <div class="source-option" id="option-paste">
+                                <i class="fas fa-paste"></i>
+                                <h3>Paste Log</h3>
+                                <p>Paste log content directly</p>
+                            </div>
+                            <div class="source-option" id="option-upload">
+                                <i class="fas fa-upload"></i>
+                                <h3>Upload File</h3>
+                                <p>Upload a log file from your computer</p>
+                            </div>
+                        </div>
+                        
+                        <div class="source-inputs">
+                            <div id="url-input" class="source-input-panel">
+                                <label for="log-url">Log URL:</label>
+                                <input type="url" id="log-url" placeholder="https://example.com/logs/error.log">
+                                <p class="hint">Enter the URL of a log file, GitHub issue, or error page</p>
+                            </div>
+                            
+                            <div id="paste-input" class="source-input-panel">
+                                <label for="log-content">Log Content:</label>
+                                <textarea id="log-content" placeholder="Paste your log content here..."></textarea>
+                                <p class="hint">Paste the full log content including any error messages and context</p>
+                            </div>
+                            
+                            <div id="upload-input" class="source-input-panel">
+                                <label for="log-file">Log File:</label>
+                                <div class="file-upload-area">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Drag & drop a file here or</p>
+                                    <label for="log-file" class="btn btn-outline">Browse Files</label>
+                                    <input type="file" id="log-file" hidden>
+                                    <p class="selected-file"></p>
+                                </div>
+                                <p class="hint">Upload a log file (.log, .txt, or any text-based format)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="wizard-actions">
+                            <button id="back-to-welcome" class="btn btn-outline">Back</button>
+                            <button id="next-to-analyzing" class="btn btn-primary">Next</button>
+                        </div>
                     </div>
                 </div>
             </section>
