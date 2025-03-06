@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import json
 import os
+import time
 from urllib.parse import urlparse
 import logging
 
@@ -22,6 +23,17 @@ class WebScraper:
         
         # Load known documentation sites
         self.doc_sites = self._load_doc_sites()
+        
+        # Common error documentation sites
+        self.error_doc_sites = [
+            "https://docs.python.org/3/library/exceptions.html",
+            "https://requests.readthedocs.io/en/latest/user/quickstart/",
+            "https://httpie.io/docs",
+            "https://docs.djangoproject.com/en/dev/ref/exceptions/",
+            "https://flask.palletsprojects.com/en/2.2.x/errorhandling/",
+            "https://docs.sqlalchemy.org/en/14/core/exceptions.html",
+            "https://www.postgresql.org/docs/current/errcodes-appendix.html"
+        ]
     
     def _load_doc_sites(self):
         """Load known documentation sites from a JSON file."""
@@ -72,22 +84,49 @@ class WebScraper:
         if not url:
             return None
             
-        try:
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()  # Raise an exception for 4XX/5XX responses
-            
-            # Check if it's likely a text-based content
-            content_type = response.headers.get('Content-Type', '').lower()
-            if 'text' in content_type or 'json' in content_type or 'xml' in content_type:
-                return response.text
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                response = self.session.get(url, timeout=10)
+                response.raise_for_status()  # Raise an exception for 4XX/5XX responses
                 
-            # For binary content, log a warning and return a placeholder
-            self.logger.warning(f"Binary content detected at {url}")
-            return f"Binary content from {url} (could not parse as text)"
-            
-        except requests.RequestException as e:
-            self.logger.error(f"Error fetching content from {url}: {str(e)}")
-            return None
+                # Check if it's likely a text-based content
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'text' in content_type or 'json' in content_type or 'xml' in content_type:
+                    return response.text
+                    
+                # For binary content, log a warning and return a placeholder
+                self.logger.warning(f"Binary content detected at {url}")
+                return f"Binary content from {url} (could not parse as text)"
+                
+            except requests.ConnectionError as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    self.logger.warning(f"Connection error fetching {url}, retry {retry_count}/{max_retries}: {str(e)}")
+                    time.sleep(1)  # Wait before retrying
+                else:
+                    self.logger.error(f"Connection error fetching {url} after {max_retries} retries: {str(e)}")
+                    return f"Connection error: Could not connect to {url}. Please check your network connection and try again."
+                    
+            except requests.Timeout as e:
+                self.logger.error(f"Timeout error fetching content from {url}: {str(e)}")
+                return f"Timeout error: The request to {url} timed out after 10 seconds. The server might be overloaded or unreachable."
+                
+            except requests.RequestException as e:
+                self.logger.error(f"Error fetching content from {url}: {str(e)}")
+                error_message = str(e)
+                
+                # Check if it's a 404 error
+                if hasattr(e, 'response') and e.response and e.response.status_code == 404:
+                    return f"Error 404: The requested URL {url} was not found on this server."
+                
+                # Check if it's another HTTP error
+                if hasattr(e, 'response') and e.response and e.response.status_code:
+                    return f"HTTP Error {e.response.status_code}: Error accessing {url}"
+                
+                return f"Error accessing {url}: {error_message}"
     
     def extract_knowledge(self, content, url):
         """

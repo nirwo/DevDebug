@@ -1,643 +1,1058 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // DOM Elements
-  const welcomeScreen = document.getElementById("welcome-screen");
-  const stepLogSource = document.getElementById("step-log-source");
-  const stepAnalyzing = document.getElementById("step-analyzing");
-  const stepResults = document.getElementById("step-results");
-  const stepSolutions = document.getElementById("step-solutions");
+  // Dashboard state
+  let currentSection = 'dashboard';
+  let activeTab = 'url-tab';
+  let chartInstances = {};
+  let errorData = {
+    errors: [],
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalPages: 1
+  };
 
-  // Navigation elements
-  const navAnalyze = document.getElementById("nav-analyze");
-  const navHistory = document.getElementById("nav-history");
-  const navSettings = document.getElementById("nav-settings");
+  // DOM References
+  const sidebarItems = document.querySelectorAll('.sidebar-nav li');
+  const contentSections = document.querySelectorAll('.content-section');
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+  const notificationsToggle = document.getElementById('notifications-toggle');
+  const notificationsPanel = document.querySelector('.notifications-panel');
+  const newAnalysisBtn = document.getElementById('new-analysis-btn');
+  const refreshDashboardBtn = document.getElementById('refresh-dashboard');
+  const modalCloseBtn = document.querySelector('.modal-close');
+  const errorDetailModal = document.getElementById('error-detail-modal');
+  const modalTabs = document.querySelectorAll('.modal-tab');
+  const modalTabContents = document.querySelectorAll('.modal-tab-content');
+  const fileDropzone = document.getElementById('file-dropzone');
+  const logFileInput = document.getElementById('log-file');
+  const filePreview = document.getElementById('file-preview');
+  const runAnalysisBtn = document.getElementById('run-analysis-btn');
+  const analysisLoading = document.getElementById('analysis-loading');
 
-  // Buttons
-  const startWizardBtn = document.getElementById("start-wizard");
-  const backToWelcomeBtn = document.getElementById("back-to-welcome");
-  const nextToAnalyzingBtn = document.getElementById("next-to-analyzing");
-  const backToLogSourceBtn = document.getElementById("back-to-log-source");
-  const cancelAnalysisBtn = document.getElementById("cancel-analysis");
-  const backToAnalyzingBtn = document.getElementById("back-to-analyzing");
-  const nextToSolutionsBtn = document.getElementById("next-to-solutions");
-  const backToResultsBtn = document.getElementById("back-to-results");
-  const startNewAnalysisBtn = document.getElementById("start-new-analysis");
-
-  // Log source options
-  const optionUrl = document.getElementById("option-url");
-  const optionPaste = document.getElementById("option-paste");
-  const optionUpload = document.getElementById("option-upload");
-
-  // Input panels
-  const urlInput = document.getElementById("url-input");
-  const pasteInput = document.getElementById("paste-input");
-  const uploadInput = document.getElementById("upload-input");
-
-  // Form inputs
-  const logUrlInput = document.getElementById("log-url");
-  const logContentInput = document.getElementById("log-content");
-  const logFileInput = document.getElementById("log-file");
-  const selectedFileText = document.querySelector(".selected-file");
-
-  // Analysis results elements
-  const resultTechnology = document.getElementById("result-technology");
-  const resultErrorType = document.getElementById("result-error-type");
-  const resultSeverity = document.getElementById("result-severity");
-  const resultErrorMessage = document.getElementById("result-error-message");
-  const resultContext = document.getElementById("result-context");
-  const resultRootCauses = document.getElementById("result-root-causes");
-
-  // Solutions elements
-  const solutionsList = document.getElementById("solutions-list");
-  const solutionTemplate = document.getElementById("solution-template");
-
-  // Feedback elements
-  const feedbackYes = document.getElementById("feedback-yes");
-  const feedbackNo = document.getElementById("feedback-no");
-  const feedbackForm = document.querySelector(".feedback-form");
-  const feedbackText = document.getElementById("feedback-text");
-  const submitFeedback = document.getElementById("submit-feedback");
-
-  // State variables
-  let currentAnalysis = null;
-  let selectedSolution = null;
-  let fileContent = null;
-
-  // Helper Functions
-  function showScreen(screen) {
-    // Hide all screens
-    [
-      welcomeScreen,
-      stepLogSource,
-      stepAnalyzing,
-      stepResults,
-      stepSolutions,
-    ].forEach((s) => {
-      s.classList.remove("active");
-    });
-
-    // Show the selected screen
-    screen.classList.add("active");
+  // Initialize the dashboard
+  function initDashboard() {
+    loadErrorData();
+    initCharts();
+    setupEventListeners();
   }
 
-  function selectSourceOption(option) {
-    // Remove active class from all options
-    [optionUrl, optionPaste, optionUpload].forEach((opt) => {
-      opt.classList.remove("active");
-    });
+  // Load mock error data
+  function loadErrorData() {
+    // In a real application, this would be an API call
+    errorData.errors = [
+      {
+        id: 'ERR-1001',
+        timestamp: '2025-03-06 08:32:15',
+        type: 'DatabaseError',
+        message: 'Connection timeout: failed to connect to database after 30s',
+        severity: 'critical',
+        status: 'new'
+      },
+      {
+        id: 'ERR-1002',
+        timestamp: '2025-03-06 09:14:22',
+        type: 'MemoryError',
+        message: 'Out of memory: Killed process 12345 (node)',
+        severity: 'error',
+        status: 'investigating'
+      },
+      {
+        id: 'ERR-1003',
+        timestamp: '2025-03-06 10:05:51',
+        type: 'NetworkError',
+        message: 'Unable to connect to external API: Connection refused',
+        severity: 'warning',
+        status: 'resolved'
+      },
+      {
+        id: 'ERR-1004',
+        timestamp: '2025-03-05 14:32:10',
+        type: 'SyntaxError',
+        message: 'Unexpected token in JSON at position 43',
+        severity: 'error',
+        status: 'new'
+      },
+      {
+        id: 'ERR-1005',
+        timestamp: '2025-03-05 16:45:33',
+        type: 'AuthenticationError',
+        message: 'Invalid credentials: token expired',
+        severity: 'critical',
+        status: 'investigating'
+      },
+      {
+        id: 'ERR-1006',
+        timestamp: '2025-03-04 11:23:05',
+        type: 'ValidationError',
+        message: 'Required field "user_id" is missing',
+        severity: 'warning',
+        status: 'resolved'
+      },
+      {
+        id: 'ERR-1007',
+        timestamp: '2025-03-04 09:17:40',
+        type: 'ConfigurationError',
+        message: 'Invalid environment variable: REDIS_URL not defined',
+        severity: 'error',
+        status: 'resolved'
+      },
+      {
+        id: 'ERR-1008',
+        timestamp: '2025-03-03 17:56:12',
+        type: 'PermissionError',
+        message: 'Access denied: user lacks required permission "admin:write"',
+        severity: 'critical',
+        status: 'new'
+      }
+    ];
 
-    // Hide all input panels
-    [urlInput, pasteInput, uploadInput].forEach((panel) => {
-      panel.classList.remove("active");
-    });
-
-    // Activate selected option and its input panel
-    option.classList.add("active");
-
-    if (option === optionUrl) {
-      urlInput.classList.add("active");
-    } else if (option === optionPaste) {
-      pasteInput.classList.add("active");
-    } else if (option === optionUpload) {
-      uploadInput.classList.add("active");
-    }
+    updateDashboardKPIs();
+    updateErrorsTable();
+    errorData.totalPages = Math.ceil(errorData.errors.length / errorData.itemsPerPage);
+    updatePagination();
   }
 
-  function updateAnalysisStatus(status) {
-    document.getElementById("analysis-status").textContent = status;
-  }
-
-  function displayAnalysis(analysis, container) {
-    if (!analysis) {
-      container.innerHTML = '<p class="error">No analysis data available</p>';
-      return;
-    }
-
-    let html = `
-            <div class="analysis-section">
-                <h3>Error Type</h3>
-                <p class="error-type">${analysis.error_type || "Unknown"}</p>
-            </div>
-            
-            <div class="analysis-section">
-                <h3>Error Message</h3>
-                <p class="error-message">${
-                  analysis.error_message || "No specific error message found"
-                }</p>
-            </div>
-            
-            <div class="analysis-section">
-                <h3>Severity</h3>
-                <div class="severity-indicator severity-${
-                  analysis.severity?.toLowerCase() || "unknown"
-                }">
-                    ${analysis.severity || "Unknown"}
-                </div>
-            </div>
-        `;
-
-    if (analysis.context && analysis.context.length > 0) {
-      html += `
-                <div class="analysis-section">
-                    <h3>Context</h3>
-                    <pre class="context-code">${analysis.context.join(
-                      "\n"
-                    )}</pre>
-                </div>
-            `;
-    }
-
-    if (analysis.tech_stack) {
-      html += `
-                <div class="analysis-section">
-                    <h3>Technology Stack</h3>
-                    <p>${analysis.tech_stack.join(", ")}</p>
-                </div>
-            `;
-    }
-
-    if (analysis.potential_causes && analysis.potential_causes.length > 0) {
-      html += `
-                <div class="analysis-section">
-                    <h3>Potential Causes</h3>
-                    <ul class="causes-list">
-                        ${analysis.potential_causes
-                          .map((cause) => `<li>${cause}</li>`)
-                          .join("")}
-                    </ul>
-                </div>
-            `;
-    }
-
-    container.innerHTML = html;
-  }
-
-  function displaySolutions(solutions, container) {
-    if (!solutions || solutions.length === 0) {
-      container.innerHTML =
-        '<p class="no-solutions">No solution suggestions available yet. Try providing more context or refining your log data.</p>';
-      return;
-    }
-
-    let html = '<div class="solutions-list">';
-
-    solutions.forEach((solution, index) => {
-      const successRatePercent = (solution.success_rate || 0) * 100;
-
-      html += `
-                <div class="solution-card">
-                    <div class="solution-header">
-                        <h3>Solution ${index + 1}</h3>
-                        <div class="success-rate">
-                            <div class="progress-bar">
-                                <div class="progress" style="width: ${successRatePercent}%"></div>
-                            </div>
-                            <span>${successRatePercent.toFixed(
-                              0
-                            )}% Success Rate</span>
-                        </div>
-                    </div>
-                    
-                    <div class="solution-body">
-                        <p>${
-                          solution.description || "No description available"
-                        }</p>
-                        
-                        ${
-                          solution.steps && solution.steps.length > 0
-                            ? `
-                            <h4>Steps to Fix</h4>
-                            <ol class="solution-steps">
-                                ${solution.steps
-                                  .map((step) => `<li>${step}</li>`)
-                                  .join("")}
-                            </ol>
-                        `
-                            : ""
-                        }
-                        
-                        ${
-                          solution.code_example
-                            ? `
-                            <h4>Code Example</h4>
-                            <pre class="code-example">${solution.code_example}</pre>
-                        `
-                            : ""
-                        }
-                        
-                        ${
-                          solution.references && solution.references.length > 0
-                            ? `
-                            <h4>References</h4>
-                            <ul class="references-list">
-                                ${solution.references
-                                  .map(
-                                    (ref) =>
-                                      `<li><a href="${
-                                        ref.url
-                                      }" target="_blank">${
-                                        ref.title || ref.url
-                                      }</a></li>`
-                                  )
-                                  .join("")}
-                            </ul>
-                        `
-                            : ""
-                        }
-                    </div>
-                    
-                    <div class="solution-footer">
-                        <button class="btn btn-outline feedback-btn" data-solution-id="${
-                          solution.id || index
-                        }">Give Feedback</button>
-                    </div>
-                </div>
-            `;
-    });
-
-    html += "</div>";
-    container.innerHTML = html;
-
-    // Add event listeners to feedback buttons
-    document.querySelectorAll(".feedback-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const solutionId = btn.getAttribute("data-solution-id");
-        // Show feedback form
-        console.log(`Feedback requested for solution ${solutionId}`);
-        // TODO: Implement feedback submission
+  // Set up event listeners
+  function setupEventListeners() {
+    // Sidebar navigation
+    sidebarItems.forEach(item => {
+      item.addEventListener('click', function() {
+        const targetSection = this.getAttribute('data-section');
+        switchSection(targetSection);
       });
     });
-  }
 
-  async function analyzeLog() {
-    const logUrlInput = document.getElementById("log-url");
-    const logContentInput = document.getElementById("log-content");
-    const uploadedFile = document.getElementById("log-file").files[0];
-    const resultContainer = document.getElementById("result-container");
-    const analysisResult = document.getElementById("analysis-result");
-    const solutionsResult = document.getElementById("solutions-result");
-    const loadingIndicator = document.getElementById("loading");
-    const loadingMessage = document.getElementById("loading-message");
+    // Tab navigation
+    tabButtons.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const targetTab = this.getAttribute('data-tab');
+        switchTab(targetTab);
+      });
+    });
 
-    let logContent = logContentInput.value;
-    let logUrl = logUrlInput.value;
-
-    // Validate input
-    if (!logContent && !logUrl && !uploadedFile) {
-      showError("Please provide a log URL, content, or upload a file.");
-      return;
+    // Notifications toggle
+    if (notificationsToggle) {
+      notificationsToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        notificationsPanel.classList.toggle('active');
+      });
     }
 
-    // Show loading indicator with initial message
-    loadingIndicator.style.display = "block";
-    loadingMessage.textContent = "Preparing log data...";
-    resultContainer.style.display = "none";
-
-    // Set a timeout to show "still analyzing" message after 5 seconds
-    const analysisTimeout = setTimeout(() => {
-      loadingMessage.textContent =
-        "Still analyzing... This may take a bit longer for complex logs.";
-    }, 5000);
-
-    // Set a timeout for overall analysis (30 seconds)
-    const overallTimeout = setTimeout(() => {
-      clearTimeout(analysisTimeout);
-      loadingIndicator.style.display = "none";
-      showError(
-        "Analysis is taking longer than expected. Please try with a smaller log or check your connection."
-      );
-    }, 30000);
-
-    try {
-      // If file was uploaded, read its contents
-      if (uploadedFile) {
-        loadingMessage.textContent = "Reading uploaded file...";
-        logContent = await readFileContent(uploadedFile);
+    // Close notifications panel when clicking outside
+    document.addEventListener('click', function(e) {
+      if (notificationsPanel && notificationsPanel.classList.contains('active') && 
+          !notificationsPanel.contains(e.target) && 
+          e.target !== notificationsToggle) {
+        notificationsPanel.classList.remove('active');
       }
+    });
 
-      // Prepare request data
-      const requestData = {
-        log_url: logUrl || null,
-        log_content: logContent || null,
-      };
+    // New analysis button
+    if (newAnalysisBtn) {
+      newAnalysisBtn.addEventListener('click', function() {
+        switchSection('analyze');
+      });
+    }
 
-      console.log("Sending request with data:", requestData);
-      loadingMessage.textContent = "Sending log for analysis...";
+    // Refresh dashboard button
+    if (refreshDashboardBtn) {
+      refreshDashboardBtn.addEventListener('click', function() {
+        // Show loading spinner or effect
+        this.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+        this.disabled = true;
+        
+        // Simulate data refresh with a timeout
+        setTimeout(() => {
+          loadErrorData();
+          refreshCharts();
+          
+          // Restore button
+          this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+          this.disabled = false;
+        }, 1000);
+      });
+    }
 
-      // Send request to backend with a fetch timeout of 20 seconds
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+    // Modal close button
+    if (modalCloseBtn) {
+      modalCloseBtn.addEventListener('click', function() {
+        errorDetailModal.classList.remove('active');
+      });
+    }
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-        signal: controller.signal,
+    // View details buttons in table
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.btn-icon') && e.target.closest('.actions-cell')) {
+        openErrorDetailModal(e.target.closest('tr').cells[0].textContent);
+      }
+    });
+
+    // View details buttons in error cards
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.btn.secondary.btn-sm') && e.target.closest('.error-card')) {
+        const errorId = e.target.closest('.error-card').querySelector('.error-id').textContent;
+        openErrorDetailModal(errorId);
+      }
+    });
+
+    // Modal tabs
+    modalTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabId = this.getAttribute('data-tab');
+        modalTabs.forEach(t => t.classList.remove('active'));
+        modalTabContents.forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // File dropzone
+    if (fileDropzone) {
+      fileDropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('active');
       });
 
-      clearTimeout(timeoutId);
-      loadingMessage.textContent = "Processing analysis results...";
-
-      // Log raw response for debugging
-      const rawResponse = await response.text();
-      console.log("Raw response:", rawResponse);
-
-      // Parse JSON
-      let data;
-      try {
-        data = JSON.parse(rawResponse);
-      } catch (e) {
-        console.error("JSON parse error:", e);
-        throw new Error(
-          `Failed to parse response: ${rawResponse.substring(0, 100)}...`
-        );
-      }
-
-      // Handle error response
-      if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
-      }
-
-      // Display analysis results
-      displayAnalysis(data.analysis, analysisResult);
-
-      // Display solution suggestions
-      displaySolutions(data.solutions, solutionsResult);
-
-      // Show results container
-      resultContainer.style.display = "block";
-    } catch (error) {
-      console.error("Error during analysis:", error);
-
-      if (error.name === "AbortError") {
-        showError(
-          "The request timed out. The server is taking too long to respond."
-        );
-      } else {
-        showError(`Error analyzing log: ${error.message}`);
-      }
-    } finally {
-      // Clear timeouts and hide loading indicator
-      clearTimeout(analysisTimeout);
-      clearTimeout(overallTimeout);
-      loadingIndicator.style.display = "none";
-    }
-  }
-
-  function showError(message) {
-    const errorContainer = document.getElementById("error-container");
-    const errorMessage = document.getElementById("error-message");
-
-    errorMessage.textContent = message;
-    errorContainer.style.display = "block";
-
-    // Hide loading indicator if showing
-    document.getElementById("loading").style.display = "none";
-
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      errorContainer.style.display = "none";
-    }, 5000);
-  }
-
-  async function submitFeedbackData(feedbackData) {
-    try {
-      const response = await fetch("/api/learn", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(feedbackData),
+      fileDropzone.addEventListener('dragleave', function() {
+        this.classList.remove('active');
       });
 
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
+      fileDropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('active');
+        
+        if (e.dataTransfer.files.length) {
+          handleFileUpload(e.dataTransfer.files[0]);
+        }
+      });
+    }
 
-      return await response.json();
-    } catch (error) {
-      console.error("Feedback submission error:", error);
-      return { success: false, error: error.message };
+    // File input change
+    if (logFileInput) {
+      logFileInput.addEventListener('change', function() {
+        if (this.files.length) {
+          handleFileUpload(this.files[0]);
+        }
+      });
+    }
+
+    // Run analysis button
+    if (runAnalysisBtn) {
+      runAnalysisBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        simulateAnalysis();
+      });
+    }
+
+    // Filter and search functionality
+    const searchInput = document.getElementById('error-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        filterErrors();
+      });
+    }
+
+    const severityFilter = document.getElementById('error-filter-severity');
+    const statusFilter = document.getElementById('error-filter-status');
+    if (severityFilter && statusFilter) {
+      severityFilter.addEventListener('change', filterErrors);
+      statusFilter.addEventListener('change', filterErrors);
+    }
+
+    // Table sorting
+    const sortableHeaders = document.querySelectorAll('th.sortable');
+    sortableHeaders.forEach(header => {
+      header.addEventListener('click', function() {
+        const sortField = this.getAttribute('data-sort');
+        sortErrors(sortField);
+      });
+    });
+
+    // Pagination
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    if (prevPageBtn && nextPageBtn) {
+      prevPageBtn.addEventListener('click', function() {
+        if (errorData.currentPage > 1) {
+          errorData.currentPage--;
+          updateErrorsTable();
+          updatePagination();
+        }
+      });
+
+      nextPageBtn.addEventListener('click', function() {
+        if (errorData.currentPage < errorData.totalPages) {
+          errorData.currentPage++;
+          updateErrorsTable();
+          updatePagination();
+        }
+      });
     }
   }
 
-  // File upload handling
+  // Switch between dashboard sections
+  function switchSection(section) {
+    sidebarItems.forEach(item => {
+      item.classList.remove('active');
+      if (item.getAttribute('data-section') === section) {
+        item.classList.add('active');
+      }
+    });
+
+    contentSections.forEach(content => {
+      content.classList.remove('active');
+      if (content.id === section) {
+        content.classList.add('active');
+      }
+    });
+
+    currentSection = section;
+
+    // Refresh charts when switching to dashboard
+    if (section === 'dashboard') {
+      refreshCharts();
+    }
+  }
+
+  // Switch between tabs
+  function switchTab(tabId) {
+    tabButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-tab') === tabId) {
+        btn.classList.add('active');
+      }
+    });
+
+    tabPanes.forEach(pane => {
+      pane.classList.remove('active');
+      if (pane.id === tabId) {
+        pane.classList.add('active');
+      }
+    });
+
+    activeTab = tabId;
+  }
+
+  // Handle file upload for analysis
   function handleFileUpload(file) {
-    if (!file) return;
+    // Show file preview
+    if (filePreview) {
+      filePreview.classList.add('active');
+      filePreview.innerHTML = `
+        <div class="file-info">
+          <i class="fas fa-file-alt"></i>
+          <div class="file-details">
+            <p class="file-name">${file.name}</p>
+            <p class="file-size">${formatFileSize(file.size)}</p>
+          </div>
+          <button class="btn-icon remove-file" title="Remove file">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
 
-    selectedFileText.textContent = file.name;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      fileContent = e.target.result;
-    };
-    reader.readAsText(file);
+      // Add remove button functionality
+      const removeBtn = filePreview.querySelector('.remove-file');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          filePreview.classList.remove('active');
+          filePreview.innerHTML = '';
+          if (logFileInput) {
+            logFileInput.value = '';
+          }
+        });
+      }
+    }
   }
 
-  // Event listeners
+  // Format file size in human-readable format
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 
-  // Navigation
-  startWizardBtn.addEventListener("click", () => {
-    showScreen(stepLogSource);
-    selectSourceOption(optionUrl); // Default to URL option
-  });
-
-  backToWelcomeBtn.addEventListener("click", () => {
-    showScreen(welcomeScreen);
-  });
-
-  nextToAnalyzingBtn.addEventListener("click", () => {
-    // Get the log content based on the selected source option
-    let logSource = {};
-
-    if (optionUrl.classList.contains("active")) {
-      const url = logUrlInput.value.trim();
-      if (!url) {
-        alert("Please enter a valid URL");
-        return;
-      }
-      logSource = { log_url: url };
-    } else if (optionPaste.classList.contains("active")) {
-      const content = logContentInput.value.trim();
-      if (!content) {
-        alert("Please paste log content");
-        return;
-      }
-      logSource = { log_content: content };
-    } else if (optionUpload.classList.contains("active")) {
-      if (!fileContent) {
-        alert("Please upload a file");
-        return;
-      }
-      logSource = { log_content: fileContent };
+  // Simulate log analysis
+  function simulateAnalysis() {
+    if (analysisLoading) {
+      analysisLoading.style.display = 'flex';
+      
+      // Update progress and status message
+      let progress = 0;
+      const progressFill = analysisLoading.querySelector('.progress-fill');
+      const statusMessage = document.getElementById('analysis-status-message');
+      
+      const progressInterval = setInterval(() => {
+        progress += 10;
+        if (progressFill) {
+          progressFill.style.width = `${progress}%`;
+        }
+        
+        // Update status messages based on progress
+        if (statusMessage) {
+          if (progress < 30) {
+            statusMessage.textContent = 'Detecting error patterns...';
+          } else if (progress < 60) {
+            statusMessage.textContent = 'Analyzing root causes...';
+          } else if (progress < 90) {
+            statusMessage.textContent = 'Finding potential solutions...';
+          } else {
+            statusMessage.textContent = 'Finalizing analysis...';
+          }
+        }
+        
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          
+          // Simulate new error being added
+          const newError = {
+            id: `ERR-${1000 + errorData.errors.length + 1}`,
+            timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+            type: 'SecurityError',
+            message: 'Potential SQL injection detected in user input',
+            severity: 'critical',
+            status: 'new'
+          };
+          
+          errorData.errors.unshift(newError);
+          
+          // Hide loading and show success
+          setTimeout(() => {
+            analysisLoading.style.display = 'none';
+            
+            // Show success notification
+            alert('Analysis complete! A new critical error has been detected and added to the dashboard.');
+            
+            // Switch to dashboard
+            switchSection('dashboard');
+            
+            // Update dashboard
+            updateDashboardKPIs();
+            updateErrorsTable();
+            refreshCharts();
+          }, 500);
+        }
+      }, 300);
     }
+  }
 
-    // Show analyzing screen
-    showScreen(stepAnalyzing);
+  // Update dashboard KPI cards
+  function updateDashboardKPIs() {
+    const totalErrors = errorData.errors.length;
+    const criticalErrors = errorData.errors.filter(e => e.severity === 'critical').length;
+    const warningErrors = errorData.errors.filter(e => e.severity === 'warning').length;
+    const resolvedErrors = errorData.errors.filter(e => e.status === 'resolved').length;
+    
+    document.getElementById('total-errors-kpi').textContent = totalErrors;
+    document.getElementById('critical-errors-kpi').textContent = criticalErrors;
+    document.getElementById('warning-errors-kpi').textContent = warningErrors;
+    document.getElementById('resolved-errors-kpi').textContent = resolvedErrors;
+    document.getElementById('error-count').textContent = totalErrors;
+    document.getElementById('showing-count').textContent = `1-${Math.min(errorData.itemsPerPage, totalErrors)}`;
+    document.getElementById('total-count').textContent = totalErrors;
+  }
 
-    // Start analysis
-    analyzeLog();
-  });
+  // Update the errors table
+  function updateErrorsTable() {
+    const tableBody = document.getElementById('errors-table-body');
+    if (!tableBody) return;
+    
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
+    // Calculate pagination
+    const startIndex = (errorData.currentPage - 1) * errorData.itemsPerPage;
+    const endIndex = Math.min(startIndex + errorData.itemsPerPage, errorData.errors.length);
+    
+    // Get current page data
+    const currentPageData = errorData.errors.slice(startIndex, endIndex);
+    
+    // Create and append rows
+    currentPageData.forEach(error => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${error.id}</td>
+        <td>${error.timestamp}</td>
+        <td>${error.type}</td>
+        <td class="error-message-cell">${error.message}</td>
+        <td><span class="status-badge ${error.severity}">${capitalizeFirstLetter(error.severity)}</span></td>
+        <td><span class="status-badge status-${error.status}">${capitalizeFirstLetter(error.status)}</span></td>
+        <td class="actions-cell">
+          <button class="btn-icon" title="View Details">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="btn-icon" title="Assign">
+            <i class="fas fa-user-plus"></i>
+          </button>
+          <button class="btn-icon" title="More">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
 
-  backToLogSourceBtn.addEventListener("click", () => {
-    showScreen(stepLogSource);
-  });
+  // Update pagination controls
+  function updatePagination() {
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const pageInfo = document.getElementById('page-info');
+    
+    if (prevPageBtn && nextPageBtn && pageInfo) {
+      prevPageBtn.disabled = errorData.currentPage === 1;
+      nextPageBtn.disabled = errorData.currentPage === errorData.totalPages;
+      pageInfo.textContent = `Page ${errorData.currentPage} of ${errorData.totalPages}`;
+    }
+  }
 
-  cancelAnalysisBtn.addEventListener("click", () => {
-    // Cancel the analysis (in a real app, you would abort the fetch)
-    showScreen(stepLogSource);
-  });
+  // Filter errors based on search and filter criteria
+  function filterErrors() {
+    const searchTerm = document.getElementById('error-search')?.value.toLowerCase() || '';
+    const severityFilter = document.getElementById('error-filter-severity')?.value || 'all';
+    const statusFilter = document.getElementById('error-filter-status')?.value || 'all';
+    
+    // Get all data
+    const allErrors = errorData.errors;
+    
+    // Apply filters
+    const filteredErrors = allErrors.filter(error => {
+      // Search term filter
+      const matchesSearch = 
+        error.id.toLowerCase().includes(searchTerm) ||
+        error.type.toLowerCase().includes(searchTerm) ||
+        error.message.toLowerCase().includes(searchTerm);
+      
+      // Severity filter
+      const matchesSeverity = severityFilter === 'all' || error.severity === severityFilter;
+      
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || error.status === statusFilter;
+      
+      return matchesSearch && matchesSeverity && matchesStatus;
+    });
+    
+    // Update the table with filtered data
+    errorData.filteredErrors = filteredErrors;
+    errorData.currentPage = 1;
+    errorData.totalPages = Math.ceil(filteredErrors.length / errorData.itemsPerPage);
+    
+    // Temporarily replace errors array with filtered results
+    const originalErrors = errorData.errors;
+    errorData.errors = filteredErrors;
+    
+    updateErrorsTable();
+    updatePagination();
+    
+    // Restore original array
+    errorData.errors = originalErrors;
+  }
 
-  backToAnalyzingBtn.addEventListener("click", () => {
-    showScreen(stepAnalyzing);
-  });
+  // Sort errors by field
+  function sortErrors(field) {
+    let sortDirection = 1; // 1 for ascending, -1 for descending
+    
+    // Toggle sort direction if sorting by the same field again
+    const currentSortField = errorData.sortField;
+    if (currentSortField === field) {
+      sortDirection = errorData.sortDirection * -1;
+    }
+    
+    // Store current sort criteria
+    errorData.sortField = field;
+    errorData.sortDirection = sortDirection;
+    
+    // Sort the errors array
+    errorData.errors.sort((a, b) => {
+      let valueA = a[field];
+      let valueB = b[field];
+      
+      // Special handling for dates
+      if (field === 'timestamp') {
+        valueA = new Date(valueA).getTime();
+        valueB = new Date(valueB).getTime();
+      }
+      
+      if (valueA < valueB) return -1 * sortDirection;
+      if (valueA > valueB) return 1 * sortDirection;
+      return 0;
+    });
+    
+    // Update the table
+    updateErrorsTable();
+    
+    // Update sort indicators in the table header
+    const headers = document.querySelectorAll('th.sortable');
+    headers.forEach(header => {
+      const headerField = header.getAttribute('data-sort');
+      const icon = header.querySelector('i');
+      
+      if (headerField === field) {
+        if (sortDirection === 1) {
+          icon.className = 'fas fa-sort-up';
+        } else {
+          icon.className = 'fas fa-sort-down';
+        }
+      } else {
+        icon.className = 'fas fa-sort';
+      }
+    });
+  }
 
-  nextToSolutionsBtn.addEventListener("click", () => {
-    showScreen(stepSolutions);
-  });
+  // Open error detail modal
+  function openErrorDetailModal(errorId) {
+    // Find the error by ID
+    const error = errorData.errors.find(e => e.id === errorId);
+    if (!error) return;
+    
+    // Populate modal with error details
+    document.getElementById('modal-error-id').textContent = error.id;
+    document.getElementById('modal-error-time').textContent = error.timestamp;
+    document.getElementById('modal-error-type').textContent = error.type;
+    
+    // Set severity badge
+    const severityElement = document.getElementById('modal-error-severity');
+    severityElement.innerHTML = `<span class="status-badge ${error.severity}">${capitalizeFirstLetter(error.severity)}</span>`;
+    
+    // Set status badge
+    const statusElement = document.getElementById('modal-error-status');
+    statusElement.innerHTML = `<span class="status-badge status-${error.status}">${capitalizeFirstLetter(error.status)}</span>`;
+    
+    // Set technology (based on error type)
+    let technology = 'Unknown';
+    if (error.type.includes('Database')) {
+      technology = 'PostgreSQL';
+    } else if (error.type.includes('Memory')) {
+      technology = 'Node.js';
+    } else if (error.type.includes('Network')) {
+      technology = 'API Service';
+    } else if (error.type.includes('Syntax')) {
+      technology = 'JavaScript';
+    } else if (error.type.includes('Authentication')) {
+      technology = 'Auth Service';
+    }
+    document.getElementById('modal-error-tech').textContent = technology;
+    
+    // Set error message
+    document.getElementById('modal-error-message').textContent = error.message;
+    
+    // Generate mock context based on error type
+    let context = '';
+    switch (error.type) {
+      case 'DatabaseError':
+        context = `2025-03-06 08:32:10.123 INFO  [pool-2-thread-1] Attempting to connect to database at db-prod-01.example.com:5432
+2025-03-06 08:32:15.234 WARN  [pool-2-thread-1] Database connection attempt 1 failed: timeout
+2025-03-06 08:32:20.345 WARN  [pool-2-thread-1] Database connection attempt 2 failed: timeout
+2025-03-06 08:32:25.456 WARN  [pool-2-thread-1] Database connection attempt 3 failed: timeout
+2025-03-06 08:32:30.567 ERROR [pool-2-thread-1] Connection timeout: failed to connect to database after 30s
+2025-03-06 08:32:30.678 ERROR [pool-2-thread-1] Application startup failed
+2025-03-06 08:32:30.789 ERROR [main] java.sql.SQLException: Connection timed out
+    at com.example.db.ConnectionManager.getConnection(ConnectionManager.java:142)
+    at com.example.service.DatabaseService.initialize(DatabaseService.java:58)
+    at com.example.Application.start(Application.java:87)
+    at com.example.Application.main(Application.java:31)`;
+        break;
+      case 'MemoryError':
+        context = `2025-03-06 09:14:15.452 INFO  [app] Server running with 4GB allocated memory
+2025-03-06 09:14:18.734 INFO  [app] Processing large data batch
+2025-03-06 09:14:20.128 WARN  [app] Memory usage at 85% (3.4GB/4GB)
+2025-03-06 09:14:21.562 WARN  [app] Memory usage at 95% (3.8GB/4GB)
+2025-03-06 09:14:22.103 ERROR [app] Out of memory: Killed process 12345 (node)
+2025-03-06 09:14:22.234 ERROR [system] Process terminated with signal: SIGKILL
+2025-03-06 09:14:22.456 ERROR [system] Core dump written to /var/crash/core.12345`;
+        break;
+      default:
+        context = `${error.timestamp.split(' ')[0]} ${error.timestamp.split(' ')[1].split(':')[0]}:${error.timestamp.split(' ')[1].split(':')[1]}:00.123 INFO  [app] Operation started
+${error.timestamp} ERROR [app] ${error.message}
+${error.timestamp.split(' ')[0]} ${error.timestamp.split(' ')[1].split(':')[0]}:${parseInt(error.timestamp.split(' ')[1].split(':')[1])+1}:00.456 ERROR [app] Operation failed with status code 500`;
+    }
+    document.getElementById('modal-error-context').textContent = context;
+    
+    // Activate first tab
+    document.querySelector('.modal-tab[data-tab="error-details-tab"]').click();
+    
+    // Show modal
+    errorDetailModal.classList.add('active');
+    
+    // Initialize error timeline chart if on metrics tab
+    initErrorTimelineChart();
+  }
 
-  backToResultsBtn.addEventListener("click", () => {
-    showScreen(stepResults);
-  });
+  // Initialize charts
+  function initCharts() {
+    initErrorDistributionChart();
+    initErrorTrendsChart();
+  }
 
-  startNewAnalysisBtn.addEventListener("click", () => {
-    // Reset state
-    currentAnalysis = null;
-    selectedSolution = null;
-    fileContent = null;
-
-    // Clear inputs
-    logUrlInput.value = "";
-    logContentInput.value = "";
-    logFileInput.value = "";
-    selectedFileText.textContent = "";
-
-    // Reset feedback form
-    feedbackForm.classList.remove("active");
-    feedbackText.value = "";
-
-    // Show log source screen
-    showScreen(stepLogSource);
-    selectSourceOption(optionUrl);
-  });
-
-  // Source options
-  optionUrl.addEventListener("click", () => {
-    selectSourceOption(optionUrl);
-  });
-
-  optionPaste.addEventListener("click", () => {
-    selectSourceOption(optionPaste);
-  });
-
-  optionUpload.addEventListener("click", () => {
-    selectSourceOption(optionUpload);
-  });
-
-  // File upload
-  logFileInput.addEventListener("change", (e) => {
-    handleFileUpload(e.target.files[0]);
-  });
-
-  // Drag and drop for file upload
-  const dropZone = document.querySelector(".file-upload-area");
-
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-  });
-
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-  });
-
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
-    handleFileUpload(e.dataTransfer.files[0]);
-  });
-
-  // Feedback
-  feedbackYes.addEventListener("click", () => {
-    feedbackForm.classList.add("active");
-    feedbackText.placeholder = "Great! Tell us what worked well...";
-  });
-
-  feedbackNo.addEventListener("click", () => {
-    feedbackForm.classList.add("active");
-    feedbackText.placeholder =
-      "Sorry to hear that. Please tell us what went wrong...";
-  });
-
-  submitFeedback.addEventListener("click", async () => {
-    const feedbackData = {
-      log_content: currentAnalysis ? currentAnalysis.error_message : "",
-      analysis: currentAnalysis,
-      feedback: feedbackText.value,
-      solution_applied: selectedSolution ? selectedSolution.solution : null,
-      solution_worked: feedbackYes.classList.contains("active"),
-    };
-
-    const result = await submitFeedbackData(feedbackData);
-
-    if (result.success) {
-      alert("Thank you for your feedback!");
-      feedbackForm.classList.remove("active");
-      feedbackText.value = "";
+  // Refresh all charts
+  function refreshCharts() {
+    if (chartInstances.errorDistribution) {
+      chartInstances.errorDistribution.updateSeries([
+        errorData.errors.filter(e => e.severity === 'critical').length,
+        errorData.errors.filter(e => e.severity === 'error').length,
+        errorData.errors.filter(e => e.severity === 'warning').length
+      ]);
     } else {
-      alert("Error submitting feedback: " + (result.error || "Unknown error"));
+      initErrorDistributionChart();
     }
-  });
+    
+    if (chartInstances.errorTrends) {
+      // Update with new data
+      const dates = getLast7Days();
+      const criticalData = dates.map(date => 
+        errorData.errors.filter(e => 
+          e.severity === 'critical' && e.timestamp.startsWith(date)
+        ).length
+      );
+      const errorData2 = dates.map(date => 
+        errorData.errors.filter(e => 
+          e.severity === 'error' && e.timestamp.startsWith(date)
+        ).length
+      );
+      const warningData = dates.map(date => 
+        errorData.errors.filter(e => 
+          e.severity === 'warning' && e.timestamp.startsWith(date)
+        ).length
+      );
+      
+      chartInstances.errorTrends.updateSeries([
+        { name: 'Critical', data: criticalData },
+        { name: 'Error', data: errorData2 },
+        { name: 'Warning', data: warningData }
+      ]);
+    } else {
+      initErrorTrendsChart();
+    }
+  }
 
-  // Additional UI interactions
-  feedbackYes.addEventListener("click", function () {
-    this.classList.add("active");
-    feedbackNo.classList.remove("active");
-  });
+  // Initialize error distribution chart
+  function initErrorDistributionChart() {
+    const chartElement = document.getElementById('error-distribution-chart');
+    if (!chartElement) return;
+    
+    const options = {
+      series: [
+        errorData.errors.filter(e => e.severity === 'critical').length,
+        errorData.errors.filter(e => e.severity === 'error').length,
+        errorData.errors.filter(e => e.severity === 'warning').length
+      ],
+      chart: {
+        type: 'donut',
+        height: 280
+      },
+      colors: ['#dc3545', '#fd7e14', '#ffc107'],
+      labels: ['Critical', 'Error', 'Warning'],
+      legend: {
+        position: 'bottom'
+      },
+      dataLabels: {
+        enabled: false
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '60%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Total',
+                formatter: function (w) {
+                  return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+    
+    chartInstances.errorDistribution = new ApexCharts(chartElement, options);
+    chartInstances.errorDistribution.render();
+  }
 
-  feedbackNo.addEventListener("click", function () {
-    this.classList.add("active");
-    feedbackYes.classList.remove("active");
-  });
-
-  // Navigation menu
-  navAnalyze.addEventListener("click", (e) => {
-    e.preventDefault();
-    document
-      .querySelectorAll("nav a")
-      .forEach((a) => a.classList.remove("active"));
-    navAnalyze.classList.add("active");
-    showScreen(welcomeScreen);
-  });
-
-  // Initialize file drop zone styling
-  document
-    .querySelector(".file-upload-area")
-    .addEventListener("dragover", function (e) {
-      e.preventDefault();
-      this.style.borderColor = "var(--primary-color)";
-      this.style.backgroundColor = "rgba(74, 108, 247, 0.05)";
+  // Initialize error trends chart
+  function initErrorTrendsChart() {
+    const chartElement = document.getElementById('error-trends-chart');
+    if (!chartElement) return;
+    
+    // Get dates for the last 7 days
+    const dates = getLast7Days();
+    
+    // Count errors for each day
+    const criticalData = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'critical' && e.timestamp.startsWith(date)
+      ).length
+    );
+    const errorData2 = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'error' && e.timestamp.startsWith(date)
+      ).length
+    );
+    const warningData = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'warning' && e.timestamp.startsWith(date)
+      ).length
+    );
+    
+    const options = {
+      series: [
+        { name: 'Critical', data: criticalData },
+        { name: 'Error', data: errorData2 },
+        { name: 'Warning', data: warningData }
+      ],
+      chart: {
+        type: 'area',
+        height: 280,
+        stacked: false,
+        toolbar: {
+          show: false
+        }
+      },
+      colors: ['#dc3545', '#fd7e14', '#ffc107'],
+      dataLabels: {
+        enabled: false
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 2
+      },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          opacityFrom: 0.6,
+          opacityTo: 0.1
+        }
+      },
+      legend: {
+        position: 'top',
+        horizontalAlign: 'right'
+      },
+      xaxis: {
+        categories: dates,
+        labels: {
+          rotate: 0,
+          style: {
+            fontSize: '11px'
+          }
+        }
+      },
+      yaxis: {
+        min: 0,
+        forceNiceScale: true,
+        labels: {
+          formatter: function(val) {
+            return val.toFixed(0);
+          }
+        }
+      },
+      tooltip: {
+        shared: true,
+        intersect: false
+      }
+    };
+    
+    chartInstances.errorTrends = new ApexCharts(chartElement, options);
+    chartInstances.errorTrends.render();
+    
+    // Add period button functionality
+    const periodButtons = document.querySelectorAll('.period-btn');
+    periodButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        periodButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        const period = this.getAttribute('data-period');
+        updateTrendsChartPeriod(period);
+      });
     });
+  }
 
-  document
-    .querySelector(".file-upload-area")
-    .addEventListener("dragleave", function (e) {
-      e.preventDefault();
-      this.style.borderColor = "var(--border-color)";
-      this.style.backgroundColor = "transparent";
+  // Initialize error timeline chart in the modal
+  function initErrorTimelineChart() {
+    const chartElement = document.getElementById('modal-error-timeline-chart');
+    if (!chartElement) return;
+    
+    // Generate mock data for the error occurrence timeline
+    const today = new Date();
+    const dates = [];
+    const counts = [];
+    
+    for (let i = 10; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      dates.push(formatDate(date));
+      
+      // Random count between 0 and 5
+      counts.push(Math.floor(Math.random() * 6));
+    }
+    
+    const options = {
+      series: [{
+        name: 'Occurrences',
+        data: counts
+      }],
+      chart: {
+        height: 250,
+        type: 'bar',
+        toolbar: {
+          show: false
+        }
+      },
+      colors: ['#4a6cf7'],
+      plotOptions: {
+        bar: {
+          borderRadius: 4,
+          columnWidth: '60%'
+        }
+      },
+      dataLabels: {
+        enabled: false
+      },
+      xaxis: {
+        categories: dates,
+        axisBorder: {
+          show: false
+        },
+        labels: {
+          style: {
+            fontSize: '10px'
+          }
+        }
+      },
+      yaxis: {
+        min: 0,
+        max: 5,
+        tickAmount: 5,
+        labels: {
+          formatter: function(val) {
+            return val.toFixed(0);
+          }
+        }
+      },
+      toolbar: {
+        tools: {
+          download: false
+        }
+      }
+    };
+    
+    // If chart already exists, destroy it
+    if (chartInstances.errorTimeline) {
+      chartInstances.errorTimeline.destroy();
+    }
+    
+    chartInstances.errorTimeline = new ApexCharts(chartElement, options);
+    chartInstances.errorTimeline.render();
+  }
+
+  // Update error trends chart based on selected period
+  function updateTrendsChartPeriod(period) {
+    if (!chartInstances.errorTrends) return;
+    
+    let dates;
+    let criticalData, errorData2, warningData;
+    
+    switch (period) {
+      case 'week':
+        dates = getLast7Days();
+        break;
+      case 'month':
+        dates = getLast30Days();
+        break;
+      case 'year':
+        dates = getLast12Months();
+        break;
+      default:
+        dates = getLast7Days();
+    }
+    
+    // Count errors for the selected period
+    criticalData = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'critical' && e.timestamp.startsWith(date)
+      ).length
+    );
+    errorData2 = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'error' && e.timestamp.startsWith(date)
+      ).length
+    );
+    warningData = dates.map(date => 
+      errorData.errors.filter(e => 
+        e.severity === 'warning' && e.timestamp.startsWith(date)
+      ).length
+    );
+    
+    chartInstances.errorTrends.updateOptions({
+      xaxis: {
+        categories: dates
+      }
     });
+    
+    chartInstances.errorTrends.updateSeries([
+      { name: 'Critical', data: criticalData },
+      { name: 'Error', data: errorData2 },
+      { name: 'Warning', data: warningData }
+    ]);
+  }
 
-  document
-    .querySelector(".file-upload-area")
-    .addEventListener("drop", function (e) {
-      e.preventDefault();
-      this.style.borderColor = "var(--border-color)";
-      this.style.backgroundColor = "transparent";
-    });
+  // Helper function to get array of last 7 days in YYYY-MM-DD format
+  function getLast7Days() {
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      result.push(formatDate(date));
+    }
+    return result;
+  }
 
-  // Error handling
-  document.getElementById("close-error")?.addEventListener("click", () => {
-    document.getElementById("error-container").style.display = "none";
-  });
+  // Helper function to get array of last 30 days in YYYY-MM-DD format
+  function getLast30Days() {
+    const result = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      result.push(formatDate(date));
+    }
+    return result;
+  }
+
+  // Helper function to get array of last 12 months in YYYY-MM format
+  function getLast12Months() {
+    const result = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      result.push(formatMonth(date));
+    }
+    return result;
+  }
+
+  // Format date as YYYY-MM-DD
+  function formatDate(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Format date as YYYY-MM
+  function formatMonth(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  // Capitalize first letter of a string
+  function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  // Initialize the dashboard on page load
+  initDashboard();
 });

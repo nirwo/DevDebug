@@ -63,7 +63,7 @@ class KnowledgeBase:
             return
         
         # Create a corpus of error descriptions and contexts
-        corpus = [f"{solution['error_type']} {solution['error_message']} {' '.join(solution.get('context', []))}"
+        corpus = [f"{solution['error_type']} {solution.get('error_message', '')} {' '.join(solution.get('context', []))}"
                  for solution in self.db['solutions']]
         
         # Fit the vectorizer and transform the corpus
@@ -177,7 +177,8 @@ class KnowledgeBase:
         # If we just have feedback, store it for future analysis
         if feedback:
             # Extract potential solutions from feedback
-            solution_pattern = r'(?:fix|solve|resolve|solution)[\s\:]+([\w\s\.\-]+)'
+            # Improved pattern to capture code snippets and more complex solutions
+            solution_pattern = r'(?:fix|solve|resolve|solution|install)[\s\:]+([\w\s\.\-\(\)\[\]\{\}\'\"\`\;\:\/\\\.\,\=\+\-\_\*\&\^\%\$\#\@\!\~]+)'
             solutions = re.findall(solution_pattern, feedback, re.IGNORECASE)
             
             if solutions:
@@ -187,9 +188,9 @@ class KnowledgeBase:
                     'context': analysis.get('context', []),
                     'technology': technology,
                     'solution': solutions[0],
-                    'attempts': 0,
-                    'successes': 0,
-                    'success_rate': 0.0,
+                    'attempts': 1,
+                    'successes': 1,  # Assume user feedback has high value
+                    'success_rate': 1.0,
                     'timestamp': time.time()
                 }
                 
@@ -279,6 +280,50 @@ class KnowledgeBase:
         
         return added_count
     
+    def add_solution(self, error_type, context, solution):
+        """
+        Add a new solution to the knowledge base.
+        
+        Args:
+            error_type (str): The type of error this solution addresses
+            context (list): List of context lines or keywords related to the error
+            solution (dict): Solution dictionary with title, description, steps, etc.
+            
+        Returns:
+            bool: True if the solution was added successfully
+        """
+        # Generate a unique ID for the solution
+        solution_id = str(int(time.time())) + str(len(self.db['solutions']))
+        
+        # Add ID to the solution if it doesn't have one
+        if 'id' not in solution:
+            solution['id'] = solution_id
+            
+        # Add metadata
+        solution['error_type'] = error_type
+        solution['context_keywords'] = context
+        solution['created_at'] = time.time()
+        solution['success_rate'] = 0.0
+        solution['feedback_count'] = 0
+        
+        # Add to solutions list
+        self.db['solutions'].append(solution)
+        
+        # Update error type statistics
+        if error_type in self.db['error_types']:
+            self.db['error_types'][error_type] += 1
+        else:
+            self.db['error_types'][error_type] = 1
+            
+        # Save the updated database
+        self._save_db()
+        
+        # Update vector representations if we have enough data
+        if len(self.db['solutions']) > 5:
+            self._update_vectors()
+            
+        return True
+    
     def _guess_error_type(self, text):
         """Guess the error type from text."""
         error_patterns = {
@@ -308,6 +353,7 @@ class KnowledgeBase:
             'docker': ['docker', 'container', 'image', 'dockerfile'],
             'kubernetes': ['kubernetes', 'k8s', 'pod', 'deployment', 'kubectl'],
             'database': ['sql', 'database', 'mysql', 'postgres', 'mongodb'],
+            'requests': ['requests', 'connectionerror', 'connecttimeout', 'readtimeout', 'response', 'requestexception'],
             'web': ['http', 'https', 'status code', 'request', 'response']
         }
         
@@ -316,3 +362,91 @@ class KnowledgeBase:
                 return tech
         
         return 'unknown'
+
+    def train(self):
+        """Train the knowledge base with additional data sources."""
+        # Placeholder for more sophisticated training
+        # In a real implementation, this would involve more complex learning
+        self._update_vectors()
+        return True
+        
+    def export_data(self):
+        """Export the entire knowledge base as a JSON-serializable dictionary."""
+        try:
+            # Create a copy of the database to avoid modifying the original
+            export_data = {
+                "version": "1.0",
+                "timestamp": time.time(),
+                "solutions": self.db["solutions"],
+                "metadata": {
+                    "total_solutions": len(self.db["solutions"]),
+                    "exported_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            }
+            
+            return export_data
+        except Exception as e:
+            print(f"Error exporting knowledge base: {str(e)}")
+            raise
+    
+    def import_data(self, data):
+        """
+        Import knowledge base data from a dictionary.
+        
+        Args:
+            data (dict): The knowledge base data to import
+            
+        Returns:
+            int: The number of solutions imported
+        """
+        try:
+            if not isinstance(data, dict):
+                raise ValueError("Import data must be a dictionary")
+                
+            if "solutions" not in data or not isinstance(data["solutions"], list):
+                raise ValueError("Import data must contain a 'solutions' list")
+                
+            # Track existing solution IDs to avoid duplicates
+            existing_ids = {solution.get("id") for solution in self.db["solutions"] if "id" in solution}
+            existing_signatures = {
+                f"{solution.get('error_type', '')}-{solution.get('error_message', '')}"
+                for solution in self.db["solutions"]
+            }
+            
+            # Count imported solutions
+            imported_count = 0
+            
+            # Add new solutions
+            for solution in data["solutions"]:
+                # Skip if solution doesn't have required fields
+                if "error_type" not in solution:
+                    continue
+                    
+                # Generate a signature for duplicate detection
+                signature = f"{solution.get('error_type', '')}-{solution.get('error_message', '')}"
+                
+                # Skip duplicates
+                if ("id" in solution and solution["id"] in existing_ids) or signature in existing_signatures:
+                    continue
+                    
+                # Add the solution
+                self.db["solutions"].append(solution)
+                
+                # Update tracking sets
+                if "id" in solution:
+                    existing_ids.add(solution["id"])
+                existing_signatures.add(signature)
+                
+                imported_count += 1
+            
+            # Save the updated database
+            self._save_db()
+            
+            # Update vectors if we imported solutions
+            if imported_count > 0:
+                self._update_vectors()
+                
+            return imported_count
+        except Exception as e:
+            print(f"Error importing knowledge base: {str(e)}")
+            raise

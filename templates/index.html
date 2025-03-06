@@ -3,388 +3,1221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevOps Debug Wizard</title>
+    <title>DevDebug Analytics - Error Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        /* Error container */
-        .error-container {
-            background-color: #ffebee;
-            border: 1px solid #f44336;
-            color: #b71c1c;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            display: none;
-        }
-        
-        .error-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        #close-error {
-            background: none;
-            border: none;
-            color: #b71c1c;
-            font-size: 20px;
-            cursor: pointer;
-        }
-        
-        /* Loading indicator improvements */
-        .loading-indicator {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary-color);
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 15px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        #loading-message {
-            color: var(--text-color);
-            font-size: 16px;
-            margin: 10px 0;
-        }
-    </style>
+    <!-- Add ApexCharts for advanced visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Add Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <div class="logo">
-                <i class="fas fa-bug-slash"></i>
-                <h1>DevOps Debug Wizard</h1>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-bug-slash"></i>
+                    <h1>DevDebug</h1>
+                </div>
+                <span class="logo-subtitle">Analytics</span>
             </div>
-            <nav>
+            
+            <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="#" class="active" id="nav-analyze">Analyze</a></li>
-                    <li><a href="#" id="nav-history">History</a></li>
-                    <li><a href="#" id="nav-settings">Settings</a></li>
+                    <li class="active" data-section="dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li data-section="errors">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Errors</span>
+                        <span class="badge" id="error-count">0</span>
+                    </li>
+                    <li data-section="analyze">
+                        <i class="fas fa-microscope"></i>
+                        <span>New Analysis</span>
+                    </li>
+                    <li data-section="metrics">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Metrics</span>
+                    </li>
+                    <li data-section="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </li>
                 </ul>
             </nav>
-        </header>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <p class="user-name">Developer</p>
+                        <p class="user-role">Admin</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
         
-        <main class="app-main">
-            <!-- Welcome Screen -->
-            <section id="welcome-screen" class="screen active">
-                <div class="welcome-content">
-                    <div class="welcome-icon">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                    </div>
-                    <h2>Welcome to DevOps Debug Wizard</h2>
-                    <p>Your intelligent assistant for analyzing and fixing DevOps failures quickly.</p>
-                    <div class="features">
-                        <div class="feature">
-                            <i class="fas fa-bolt"></i>
-                            <span>Fast Analysis</span>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-brain"></i>
-                            <span>AI-Powered</span>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-graduation-cap"></i>
-                            <span>Self-Learning</span>
-                        </div>
-                        <div class="feature">
-                            <i class="fas fa-robot"></i>
-                            <span>Autonomous</span>
-                        </div>
-                    </div>
-                    <button id="start-wizard" class="btn btn-primary">Start Debugging</button>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search errors, logs, solutions...">
                 </div>
-            </section>
-            
-            <!-- Wizard Step 1: Log Source -->
-            <section id="step-log-source" class="screen wizard-step">
-                <div class="wizard-header">
-                    <h2>Step 1: Provide Log Source</h2>
-                    <div class="wizard-progress">
-                        <div class="progress-step active"></div>
-                        <div class="progress-step"></div>
-                        <div class="progress-step"></div>
-                        <div class="progress-step"></div>
-                    </div>
-                </div>
-                <div class="wizard-content">
-                    <div id="loading" class="loading-indicator" style="display: none;">
-                        <div class="spinner"></div>
-                        <p id="loading-message">Analyzing log...</p>
-                    </div>
-                    
-                    <div id="error-container" class="error-container" style="display: none;">
-                        <div class="error-content">
-                            <p id="error-message"></p>
-                            <button id="close-error">×</button>
-                        </div>
-                    </div>
-                    
-                    <div class="log-input">
-                        <h2>Step 1: Provide Log</h2>
-                        <p>Enter log URL, paste log content, or upload a log file:</p>
-                        
-                        <div class="source-options">
-                            <div class="source-option" id="option-url">
-                                <i class="fas fa-link"></i>
-                                <h3>URL</h3>
-                                <p>Provide a URL to a log file or error page</p>
+                
+                <div class="header-actions">
+                    <button class="btn-icon" id="toggle-fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="btn-icon" id="refresh-data">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="notifications">
+                        <button class="btn-icon" id="notifications-toggle">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge">3</span>
+                        </button>
+                        <div class="notifications-panel">
+                            <div class="notifications-header">
+                                <h3>Notifications</h3>
+                                <button class="btn-text" id="mark-all-read">Mark all as read</button>
                             </div>
-                            <div class="source-option" id="option-paste">
-                                <i class="fas fa-paste"></i>
-                                <h3>Paste Log</h3>
-                                <p>Paste log content directly</p>
-                            </div>
-                            <div class="source-option" id="option-upload">
-                                <i class="fas fa-upload"></i>
-                                <h3>Upload File</h3>
-                                <p>Upload a log file from your computer</p>
-                            </div>
-                        </div>
-                        
-                        <div class="source-inputs">
-                            <div id="url-input" class="source-input-panel">
-                                <label for="log-url">Log URL:</label>
-                                <input type="url" id="log-url" placeholder="https://example.com/logs/error.log">
-                                <p class="hint">Enter the URL of a log file, GitHub issue, or error page</p>
-                            </div>
-                            
-                            <div id="paste-input" class="source-input-panel">
-                                <label for="log-content">Log Content:</label>
-                                <textarea id="log-content" placeholder="Paste your log content here..."></textarea>
-                                <p class="hint">Paste the full log content including any error messages and context</p>
-                            </div>
-                            
-                            <div id="upload-input" class="source-input-panel">
-                                <label for="log-file">Log File:</label>
-                                <div class="file-upload-area">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Drag & drop a file here or</p>
-                                    <label for="log-file" class="btn btn-outline">Browse Files</label>
-                                    <input type="file" id="log-file" hidden>
-                                    <p class="selected-file"></p>
+                            <div class="notifications-list">
+                                <div class="notification-item unread">
+                                    <div class="notification-icon critical">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p class="notification-title">Critical Error Detected</p>
+                                        <p class="notification-desc">Database connection timeout in production</p>
+                                        <p class="notification-time">10 minutes ago</p>
+                                    </div>
                                 </div>
-                                <p class="hint">Upload a log file (.log, .txt, or any text-based format)</p>
+                                <div class="notification-item unread">
+                                    <div class="notification-icon warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p class="notification-title">New Error Pattern</p>
+                                        <p class="notification-desc">Memory leak detected in API service</p>
+                                        <p class="notification-time">45 minutes ago</p>
+                                    </div>
+                                </div>
+                                <div class="notification-item unread">
+                                    <div class="notification-icon info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p class="notification-title">Solution Applied</p>
+                                        <p class="notification-desc">JWT token expiration issue fixed</p>
+                                        <p class="notification-time">1 hour ago</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="notifications-footer">
+                                <button class="btn-text" id="view-all-notifications">View all notifications</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <h2>Error Analytics Dashboard</h2>
+                    <div class="section-actions">
+                        <button class="btn secondary" id="export-dashboard">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn primary" id="new-analysis-btn">
+                            <i class="fas fa-plus"></i> New Analysis
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <h3 class="kpi-title">Total Errors</h3>
+                            <p class="kpi-value" id="total-errors-kpi">24</p>
+                            <p class="kpi-trend up">
+                                <i class="fas fa-arrow-up"></i> 15% from last week
+                            </p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon critical">
+                            <i class="fas fa-radiation"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <h3 class="kpi-title">Critical</h3>
+                            <p class="kpi-value" id="critical-errors-kpi">5</p>
+                            <p class="kpi-trend down">
+                                <i class="fas fa-arrow-down"></i> 10% from last week
+                            </p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <h3 class="kpi-title">Warnings</h3>
+                            <p class="kpi-value" id="warning-errors-kpi">12</p>
+                            <p class="kpi-trend up">
+                                <i class="fas fa-arrow-up"></i> 8% from last week
+                            </p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="kpi-data">
+                            <h3 class="kpi-title">Resolved</h3>
+                            <p class="kpi-value" id="resolved-errors-kpi">7</p>
+                            <p class="kpi-trend up">
+                                <i class="fas fa-arrow-up"></i> 20% from last week
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Row -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Error Distribution</h3>
+                            <div class="chart-actions">
+                                <button class="btn-icon">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <div id="error-distribution-chart" class="chart"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Error Trends</h3>
+                            <div class="chart-actions">
+                                <div class="chart-period-selector">
+                                    <button class="period-btn active" data-period="week">Week</button>
+                                    <button class="period-btn" data-period="month">Month</button>
+                                    <button class="period-btn" data-period="year">Year</button>
+                                </div>
+                                <button class="btn-icon">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <div id="error-trends-chart" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Errors Table -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>Recent Errors</h3>
+                        <div class="table-actions">
+                            <div class="search-field">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="error-search" placeholder="Search errors...">
+                            </div>
+                            <div class="filter-controls">
+                                <select id="error-filter-severity">
+                                    <option value="all">All Severities</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="error">Error</option>
+                                    <option value="warning">Warning</option>
+                                    <option value="info">Info</option>
+                                </select>
+                                <select id="error-filter-status">
+                                    <option value="all">All Status</option>
+                                    <option value="new">New</option>
+                                    <option value="investigating">Investigating</option>
+                                    <option value="resolved">Resolved</option>
+                                </select>
+                                <button class="btn-icon" id="filter-toggle">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table" id="errors-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="id">ID <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="timestamp">Timestamp <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="type">Type <i class="fas fa-sort"></i></th>
+                                    <th>Error Message</th>
+                                    <th class="sortable" data-sort="severity">Severity <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="status">Status <i class="fas fa-sort"></i></th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="errors-table-body">
+                                <!-- Error rows will be inserted here -->
+                                <tr>
+                                    <td>ERR-1001</td>
+                                    <td>2025-03-06 08:32:15</td>
+                                    <td>DatabaseError</td>
+                                    <td class="error-message-cell">Connection timeout: failed to connect to database after 30s</td>
+                                    <td><span class="status-badge critical">Critical</span></td>
+                                    <td><span class="status-badge status-new">New</span></td>
+                                    <td class="actions-cell">
+                                        <button class="btn-icon" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="Assign">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        <button class="btn-icon" title="More">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>ERR-1002</td>
+                                    <td>2025-03-06 09:14:22</td>
+                                    <td>MemoryError</td>
+                                    <td class="error-message-cell">Out of memory: Killed process 12345 (node)</td>
+                                    <td><span class="status-badge error">Error</span></td>
+                                    <td><span class="status-badge status-investigating">Investigating</span></td>
+                                    <td class="actions-cell">
+                                        <button class="btn-icon" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="Assign">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        <button class="btn-icon" title="More">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>ERR-1003</td>
+                                    <td>2025-03-06 10:05:51</td>
+                                    <td>NetworkError</td>
+                                    <td class="error-message-cell">Unable to connect to external API: Connection refused</td>
+                                    <td><span class="status-badge warning">Warning</span></td>
+                                    <td><span class="status-badge status-resolved">Resolved</span></td>
+                                    <td class="actions-cell">
+                                        <button class="btn-icon" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="Assign">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        <button class="btn-icon" title="More">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="table-footer">
+                        <div class="table-info">Showing <span id="showing-count">1-3</span> of <span id="total-count">24</span> errors</div>
+                        <div class="pagination">
+                            <button class="pagination-btn" disabled>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="pagination-pages">
+                                <button class="pagination-page active">1</button>
+                                <button class="pagination-page">2</button>
+                                <button class="pagination-page">3</button>
+                                <span class="pagination-ellipsis">...</span>
+                                <button class="pagination-page">8</button>
+                            </div>
+                            <button class="pagination-btn">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Analyze Section - For new log analysis -->
+            <section id="analyze" class="content-section">
+                <div class="section-header">
+                    <h2>New Error Analysis</h2>
+                </div>
+                
+                <div class="analysis-container">
+                    <div class="input-card">
+                        <div class="card-tabs">
+                            <button class="tab-btn active" data-tab="url-tab">URL</button>
+                            <button class="tab-btn" data-tab="paste-tab">Paste Log</button>
+                            <button class="tab-btn" data-tab="upload-tab">Upload File</button>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <div id="url-tab" class="tab-pane active">
+                                <div class="form-group">
+                                    <label for="log-url">Log URL:</label>
+                                    <input type="url" id="log-url" class="form-control" placeholder="https://example.com/logs/error.log">
+                                    <p class="form-hint">Enter URL to a log file, GitHub issue, or error page</p>
+                                </div>
+                            </div>
+                            
+                            <div id="paste-tab" class="tab-pane">
+                                <div class="form-group">
+                                    <label for="log-content">Log Content:</label>
+                                    <textarea id="log-content" class="form-control" rows="10" placeholder="Paste your log content here..."></textarea>
+                                    <p class="form-hint">Paste the full log content including error messages and context</p>
+                                </div>
+                            </div>
+                            
+                            <div id="upload-tab" class="tab-pane">
+                                <div class="form-group">
+                                    <label for="log-file">Log File:</label>
+                                    <div class="file-dropzone" id="file-dropzone">
+                                        <div class="dropzone-content">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <p>Drag & drop log file here</p>
+                                            <p>or</p>
+                                            <label for="log-file" class="btn secondary">Browse Files</label>
+                                            <input type="file" id="log-file" hidden>
+                                        </div>
+                                        <div class="file-preview" id="file-preview"></div>
+                                    </div>
+                                    <p class="form-hint">Upload .log, .txt or any text-based log file</p>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="wizard-actions">
-                            <button id="back-to-welcome" class="btn btn-outline">Back</button>
-                            <button id="next-to-analyzing" class="btn btn-primary">Next</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Wizard Step 2: Analyzing -->
-            <section id="step-analyzing" class="screen wizard-step">
-                <div class="wizard-header">
-                    <h2>Step 2: Analyzing Log</h2>
-                    <div class="wizard-progress">
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step active"></div>
-                        <div class="progress-step"></div>
-                        <div class="progress-step"></div>
-                    </div>
-                </div>
-                <div class="wizard-content">
-                    <div id="loading" class="loading-indicator" style="display: none;">
-                        <div class="spinner"></div>
-                        <p id="loading-message">Analyzing log...</p>
-                    </div>
-                    
-                    <div id="error-container" class="error-container" style="display: none;">
-                        <div class="error-content">
-                            <p id="error-message"></p>
-                            <button id="close-error">×</button>
-                        </div>
-                    </div>
-                    
-                    <div class="analyzing-animation">
-                        <div class="spinner"></div>
-                        <div class="analyzing-text">
-                            <h3>Analyzing your log...</h3>
-                            <p id="analysis-status">Identifying error patterns</p>
-                        </div>
-                    </div>
-                    
-                    <div class="wizard-actions">
-                        <button id="back-to-log-source" class="btn btn-outline">Back</button>
-                        <button id="cancel-analysis" class="btn btn-outline btn-danger">Cancel</button>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Wizard Step 3: Results -->
-            <section id="step-results" class="screen wizard-step">
-                <div class="wizard-header">
-                    <h2>Step 3: Analysis Results</h2>
-                    <div class="wizard-progress">
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step active"></div>
-                        <div class="progress-step"></div>
-                    </div>
-                </div>
-                <div class="wizard-content">
-                    <div id="loading" class="loading-indicator" style="display: none;">
-                        <div class="spinner"></div>
-                        <p id="loading-message">Analyzing log...</p>
-                    </div>
-                    
-                    <div id="error-container" class="error-container" style="display: none;">
-                        <div class="error-content">
-                            <p id="error-message"></p>
-                            <button id="close-error">×</button>
-                        </div>
-                    </div>
-                    
-                    <div class="results-container">
-                        <div class="results-summary">
-                            <div class="summary-item">
-                                <div class="summary-label">Technology</div>
-                                <div class="summary-value" id="result-technology">Unknown</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Error Type</div>
-                                <div class="summary-value" id="result-error-type">Unknown</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Severity</div>
-                                <div class="summary-value severity" id="result-severity">Medium</div>
+                        <div class="analysis-options">
+                            <h3>Analysis Options</h3>
+                            <div class="options-grid">
+                                <div class="option-item">
+                                    <input type="checkbox" id="deep-scan" checked>
+                                    <label for="deep-scan">Deep Scan</label>
+                                </div>
+                                <div class="option-item">
+                                    <input type="checkbox" id="find-solutions" checked>
+                                    <label for="find-solutions">Find Solutions</label>
+                                </div>
+                                <div class="option-item">
+                                    <input type="checkbox" id="extract-metrics" checked>
+                                    <label for="extract-metrics">Extract Metrics</label>
+                                </div>
+                                <div class="option-item">
+                                    <input type="checkbox" id="web-search">
+                                    <label for="web-search">Web Search</label>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="results-details">
-                            <div class="result-section">
-                                <h3>Error Message</h3>
-                                <div class="code-block" id="result-error-message">No error message detected</div>
-                            </div>
-                            
-                            <div class="result-section">
-                                <h3>Context</h3>
-                                <div class="code-block" id="result-context">No context available</div>
-                            </div>
-                            
-                            <div class="result-section">
-                                <h3>Potential Root Causes</h3>
-                                <ul class="root-causes-list" id="result-root-causes">
-                                    <li>No root causes identified</li>
-                                </ul>
-                            </div>
+                        <div class="form-actions">
+                            <button class="btn primary" id="run-analysis-btn">
+                                <i class="fas fa-play"></i> Run Analysis
+                            </button>
                         </div>
                     </div>
-                    
-                    <div class="wizard-actions">
-                        <button id="back-to-analyzing" class="btn btn-outline">Back</button>
-                        <button id="next-to-solutions" class="btn btn-primary">View Solutions</button>
+                </div>
+                
+                <div class="loading-overlay" id="analysis-loading" style="display: none;">
+                    <div class="loading-content">
+                        <div class="spinner"></div>
+                        <h3>Analyzing Log</h3>
+                        <p id="analysis-status-message">Detecting error patterns...</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 45%"></div>
+                        </div>
                     </div>
                 </div>
             </section>
             
-            <!-- Wizard Step 4: Solutions -->
-            <section id="step-solutions" class="screen wizard-step">
-                <div class="wizard-header">
-                    <h2>Step 4: Recommended Solutions</h2>
-                    <div class="wizard-progress">
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step completed"></div>
-                        <div class="progress-step active"></div>
+            <!-- Errors Section -->
+            <section id="errors" class="content-section">
+                <div class="section-header">
+                    <h2>Error Management</h2>
+                    <div class="section-actions">
+                        <button class="btn secondary" id="bulk-actions-btn">
+                            <i class="fas fa-tasks"></i> Bulk Actions
+                        </button>
+                        <div class="bulk-actions-menu">
+                            <button class="bulk-action-btn" data-action="mark-resolved">
+                                <i class="fas fa-check"></i> Mark as Resolved
+                            </button>
+                            <button class="bulk-action-btn" data-action="assign">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                            <button class="bulk-action-btn" data-action="export">
+                                <i class="fas fa-file-export"></i> Export Selected
+                            </button>
+                            <button class="bulk-action-btn warning" data-action="delete">
+                                <i class="fas fa-trash"></i> Delete Selected
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="wizard-content">
-                    <div id="loading" class="loading-indicator" style="display: none;">
-                        <div class="spinner"></div>
-                        <p id="loading-message">Analyzing log...</p>
-                    </div>
-                    
-                    <div id="error-container" class="error-container" style="display: none;">
-                        <div class="error-content">
-                            <p id="error-message"></p>
-                            <button id="close-error">×</button>
+                
+                <div class="errors-container">
+                    <div class="filters-panel">
+                        <div class="filter-group">
+                            <h3>Severity</h3>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" checked> All
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Critical
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Error
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Warning
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Info
+                                </label>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="solutions-container" id="solutions-list">
-                        <!-- Solutions will be inserted here dynamically -->
-                        <div class="no-solutions">
-                            <i class="fas fa-search"></i>
-                            <p>No solutions found. The system is still learning about this type of error.</p>
+                        
+                        <div class="filter-group">
+                            <h3>Status</h3>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" checked> All
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> New
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Investigating
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox"> Resolved
+                                </label>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="feedback-section">
-                        <h3>Did these solutions help?</h3>
-                        <div class="feedback-options">
-                            <button id="feedback-yes" class="btn btn-outline btn-sm">
-                                <i class="fas fa-thumbs-up"></i> Yes
+                        
+                        <div class="filter-group">
+                            <h3>Time Range</h3>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="radio" name="time-range" checked> All Time
+                                </label>
+                                <label class="filter-option">
+                                    <input type="radio" name="time-range"> Last 24 Hours
+                                </label>
+                                <label class="filter-option">
+                                    <input type="radio" name="time-range"> Last 7 Days
+                                </label>
+                                <label class="filter-option">
+                                    <input type="radio" name="time-range"> Last 30 Days
+                                </label>
+                                <label class="filter-option">
+                                    <input type="radio" name="time-range"> Custom
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button class="btn secondary" id="reset-filters">
+                                <i class="fas fa-undo"></i> Reset Filters
                             </button>
-                            <button id="feedback-no" class="btn btn-outline btn-sm">
-                                <i class="fas fa-thumbs-down"></i> No
+                            <button class="btn primary" id="apply-filters">
+                                <i class="fas fa-check"></i> Apply Filters
                             </button>
-                        </div>
-                        <div class="feedback-form">
-                            <textarea id="feedback-text" placeholder="Share what worked or what didn't work..."></textarea>
-                            <button id="submit-feedback" class="btn btn-primary btn-sm">Submit Feedback</button>
                         </div>
                     </div>
                     
-                    <div class="wizard-actions">
-                        <button id="back-to-results" class="btn btn-outline">Back to Results</button>
-                        <button id="start-new-analysis" class="btn btn-primary">Start New Analysis</button>
+                    <div class="errors-grid">
+                        <div class="error-card">
+                            <div class="error-header">
+                                <span class="error-severity critical"></span>
+                                <div class="error-id">ERR-1001</div>
+                                <div class="error-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="error-body">
+                                <h3 class="error-type">DatabaseError</h3>
+                                <p class="error-message">Connection timeout: failed to connect to database after 30s</p>
+                                <div class="error-meta">
+                                    <div class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>2025-03-06</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span>08:32:15</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="error-footer">
+                                <span class="status-badge status-new">New</span>
+                                <button class="btn secondary btn-sm">View Details</button>
+                            </div>
+                        </div>
+                        
+                        <div class="error-card">
+                            <div class="error-header">
+                                <span class="error-severity error"></span>
+                                <div class="error-id">ERR-1002</div>
+                                <div class="error-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="error-body">
+                                <h3 class="error-type">MemoryError</h3>
+                                <p class="error-message">Out of memory: Killed process 12345 (node)</p>
+                                <div class="error-meta">
+                                    <div class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>2025-03-06</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span>09:14:22</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="error-footer">
+                                <span class="status-badge status-investigating">Investigating</span>
+                                <button class="btn secondary btn-sm">View Details</button>
+                            </div>
+                        </div>
+                        
+                        <div class="error-card">
+                            <div class="error-header">
+                                <span class="error-severity warning"></span>
+                                <div class="error-id">ERR-1003</div>
+                                <div class="error-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="error-body">
+                                <h3 class="error-type">NetworkError</h3>
+                                <p class="error-message">Unable to connect to external API: Connection refused</p>
+                                <div class="error-meta">
+                                    <div class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>2025-03-06</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span>10:05:51</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="error-footer">
+                                <span class="status-badge status-resolved">Resolved</span>
+                                <button class="btn secondary btn-sm">View Details</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Metrics Section -->
+            <section id="metrics" class="content-section">
+                <div class="section-header">
+                    <h2>Performance Metrics</h2>
+                    <div class="section-actions">
+                        <div class="time-selector">
+                            <button class="time-btn active" data-time="day">Day</button>
+                            <button class="time-btn" data-time="week">Week</button>
+                            <button class="time-btn" data-time="month">Month</button>
+                            <button class="time-btn" data-time="year">Year</button>
+                        </div>
+                        <button class="btn secondary" id="export-metrics">
+                            <i class="fas fa-download"></i> Export Metrics
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="metrics-container">
+                    <div class="metrics-grid">
+                        <div class="chart-card wide">
+                            <div class="chart-header">
+                                <h3>Error Occurrence Over Time</h3>
+                                <div class="chart-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-body">
+                                <div id="errors-timeline-chart" class="chart"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Error Types Distribution</h3>
+                                <div class="chart-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-body">
+                                <div id="error-types-chart" class="chart"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Resolution Time</h3>
+                                <div class="chart-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-body">
+                                <div id="resolution-time-chart" class="chart"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-card wide">
+                            <div class="chart-header">
+                                <h3>Error Impact Analysis</h3>
+                                <div class="chart-actions">
+                                    <button class="btn-icon">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-body">
+                                <div id="error-impact-chart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <div class="section-header">
+                    <h2>Settings</h2>
+                </div>
+                
+                <div class="settings-container">
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <div class="settings-header">
+                                <h3>General Settings</h3>
+                            </div>
+                            <div class="settings-body">
+                                <div class="form-group">
+                                    <label for="setting-theme">UI Theme</label>
+                                    <select id="setting-theme" class="form-control">
+                                        <option value="light">Light</option>
+                                        <option value="dark">Dark</option>
+                                        <option value="system">System Default</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-timezone">Timezone</label>
+                                    <select id="setting-timezone" class="form-control">
+                                        <option value="utc">UTC</option>
+                                        <option value="local" selected>Local Time</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-language">Language</label>
+                                    <select id="setting-language" class="form-control">
+                                        <option value="en">English</option>
+                                        <option value="es">Spanish</option>
+                                        <option value="fr">French</option>
+                                        <option value="de">German</option>
+                                        <option value="ja">Japanese</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <div class="settings-header">
+                                <h3>Notification Settings</h3>
+                            </div>
+                            <div class="settings-body">
+                                <div class="form-group switch-group">
+                                    <label for="setting-notify-critical">
+                                        Critical Error Notifications
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-notify-critical" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group switch-group">
+                                    <label for="setting-notify-warnings">
+                                        Warning Notifications
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-notify-warnings" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group switch-group">
+                                    <label for="setting-notify-resolved">
+                                        Resolution Notifications
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-notify-resolved" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group switch-group">
+                                    <label for="setting-email-notifications">
+                                        Email Notifications
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-email-notifications">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <div class="settings-header">
+                                <h3>Analysis Settings</h3>
+                            </div>
+                            <div class="settings-body">
+                                <div class="form-group">
+                                    <label for="setting-default-scan-depth">Default Scan Depth</label>
+                                    <select id="setting-default-scan-depth" class="form-control">
+                                        <option value="basic">Basic</option>
+                                        <option value="normal" selected>Normal</option>
+                                        <option value="deep">Deep</option>
+                                    </select>
+                                </div>
+                                <div class="form-group switch-group">
+                                    <label for="setting-auto-web-search">
+                                        Automatic Web Search
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-auto-web-search">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group switch-group">
+                                    <label for="setting-auto-classify">
+                                        Auto-classify Errors
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-auto-classify" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <div class="settings-header">
+                                <h3>API Integrations</h3>
+                            </div>
+                            <div class="settings-body">
+                                <div class="integration-item">
+                                    <div class="integration-icon github">
+                                        <i class="fab fa-github"></i>
+                                    </div>
+                                    <div class="integration-info">
+                                        <h4>GitHub</h4>
+                                        <p>Connect to auto-create issues</p>
+                                    </div>
+                                    <button class="btn secondary btn-sm">Connect</button>
+                                </div>
+                                <div class="integration-item">
+                                    <div class="integration-icon jira">
+                                        <i class="fab fa-jira"></i>
+                                    </div>
+                                    <div class="integration-info">
+                                        <h4>Jira</h4>
+                                        <p>Connect to Jira issue tracker</p>
+                                    </div>
+                                    <button class="btn secondary btn-sm">Connect</button>
+                                </div>
+                                <div class="integration-item">
+                                    <div class="integration-icon slack">
+                                        <i class="fab fa-slack"></i>
+                                    </div>
+                                    <div class="integration-info">
+                                        <h4>Slack</h4>
+                                        <p>Connect for notifications</p>
+                                    </div>
+                                    <button class="btn secondary btn-sm">Connect</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-actions">
+                        <button class="btn secondary" id="reset-settings">Reset to Default</button>
+                        <button class="btn primary" id="save-settings">Save Settings</button>
                     </div>
                 </div>
             </section>
         </main>
         
-        <footer class="app-footer">
-            <p>&copy; 2025 DevOps Debug Wizard | <a href="#" id="privacy-link">Privacy Policy</a> | <a href="#" id="terms-link">Terms of Service</a></p>
-        </footer>
-    </div>
-    
-    <!-- Templates for dynamic content -->
-    <template id="solution-template">
-        <div class="solution-card">
-            <div class="solution-header">
-                <h3 class="solution-title">Solution Title</h3>
-                <div class="solution-meta">
-                    <span class="solution-success-rate">
-                        <i class="fas fa-check-circle"></i>
-                        <span class="rate-value">95%</span> success rate
-                    </span>
+        <!-- Error Detail Modal -->
+        <div class="modal" id="error-detail-modal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Error Details</h2>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    
+                    <div class="modal-tabs">
+                        <button class="modal-tab active" data-tab="error-details-tab">Details</button>
+                        <button class="modal-tab" data-tab="error-solution-tab">Solutions</button>
+                        <button class="modal-tab" data-tab="error-metrics-tab">Metrics</button>
+                        <button class="modal-tab" data-tab="error-history-tab">History</button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="modal-tab-content active" id="error-details-tab">
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <div class="detail-label">Error ID</div>
+                                    <div class="detail-value" id="modal-error-id">ERR-1001</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Timestamp</div>
+                                    <div class="detail-value" id="modal-error-time">2025-03-06 08:32:15</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Error Type</div>
+                                    <div class="detail-value" id="modal-error-type">DatabaseError</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Severity</div>
+                                    <div class="detail-value" id="modal-error-severity">
+                                        <span class="status-badge critical">Critical</span>
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Status</div>
+                                    <div class="detail-value" id="modal-error-status">
+                                        <span class="status-badge status-new">New</span>
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Technology</div>
+                                    <div class="detail-value" id="modal-error-tech">PostgreSQL</div>
+                                </div>
+                            </div>
+                            
+                            <div class="error-message-section">
+                                <h3>Error Message</h3>
+                                <div class="code-block" id="modal-error-message">
+                                    Connection timeout: failed to connect to database after 30s
+                                </div>
+                            </div>
+                            
+                            <div class="error-context-section">
+                                <h3>Context</h3>
+                                <div class="code-block" id="modal-error-context">
+                                    2025-03-06 08:32:10.123 INFO  [pool-2-thread-1] Attempting to connect to database at db-prod-01.example.com:5432
+                                    2025-03-06 08:32:15.234 WARN  [pool-2-thread-1] Database connection attempt 1 failed: timeout
+                                    2025-03-06 08:32:20.345 WARN  [pool-2-thread-1] Database connection attempt 2 failed: timeout
+                                    2025-03-06 08:32:25.456 WARN  [pool-2-thread-1] Database connection attempt 3 failed: timeout
+                                    2025-03-06 08:32:30.567 ERROR [pool-2-thread-1] Connection timeout: failed to connect to database after 30s
+                                    2025-03-06 08:32:30.678 ERROR [pool-2-thread-1] Application startup failed
+                                    2025-03-06 08:32:30.789 ERROR [main] java.sql.SQLException: Connection timed out
+                                        at com.example.db.ConnectionManager.getConnection(ConnectionManager.java:142)
+                                        at com.example.service.DatabaseService.initialize(DatabaseService.java:58)
+                                        at com.example.Application.start(Application.java:87)
+                                        at com.example.Application.main(Application.java:31)
+                                </div>
+                            </div>
+                            
+                            <div class="root-causes-section">
+                                <h3>Potential Root Causes</h3>
+                                <ul class="root-causes-list" id="modal-root-causes">
+                                    <li>
+                                        <div class="cause-probability high">85%</div>
+                                        <div class="cause-details">
+                                            <p>Database server is unreachable due to network connectivity issues</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="cause-probability medium">65%</div>
+                                        <div class="cause-details">
+                                            <p>Database service not running on the target machine</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="cause-probability medium">45%</div>
+                                        <div class="cause-details">
+                                            <p>Incorrect connection credentials in configuration</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="cause-probability low">25%</div>
+                                        <div class="cause-details">
+                                            <p>Database under heavy load and not responding to new connections</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-tab-content" id="error-solution-tab">
+                            <div class="solutions-container" id="modal-solutions">
+                                <div class="solution-card">
+                                    <div class="solution-header">
+                                        <div class="solution-meta">
+                                            <span class="solution-rating">
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star-half-alt"></i>
+                                            </span>
+                                            <span class="solution-matches">
+                                                <i class="fas fa-check-circle"></i> 98% match
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="solution-body">
+                                        <h3 class="solution-title">Check Network Connectivity</h3>
+                                        <div class="solution-content">
+                                            <p>Verify network connectivity between the application server and database server:</p>
+                                            <div class="code-block">
+                                                # Check if database server is reachable
+                                                ping db-prod-01.example.com
+                                                
+                                                # Verify the database port is open
+                                                telnet db-prod-01.example.com 5432
+                                                
+                                                # Check firewall rules
+                                                sudo iptables -L | grep 5432
+                                            </div>
+                                            <p>If connectivity issues are confirmed, ensure:</p>
+                                            <ul>
+                                                <li>Network routes are correctly configured</li>
+                                                <li>Firewall rules allow traffic on port 5432</li>
+                                                <li>Database server is running and listening on the expected IP/port</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="solution-actions">
+                                        <button class="btn secondary">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                        <button class="btn primary">
+                                            <i class="fas fa-check"></i> Mark as Applied
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="solution-card">
+                                    <div class="solution-header">
+                                        <div class="solution-meta">
+                                            <span class="solution-rating">
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="fas fa-star"></i>
+                                                <i class="far fa-star"></i>
+                                            </span>
+                                            <span class="solution-matches">
+                                                <i class="fas fa-check-circle"></i> 85% match
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="solution-body">
+                                        <h3 class="solution-title">Verify Database Service Status</h3>
+                                        <div class="solution-content">
+                                            <p>Check if the database service is running properly:</p>
+                                            <div class="code-block">
+                                                # For PostgreSQL on Linux
+                                                sudo systemctl status postgresql
+                                                
+                                                # Check PostgreSQL logs
+                                                sudo tail -n 100 /var/log/postgresql/postgresql-14-main.log
+                                            </div>
+                                            <p>If the service is down, restart it:</p>
+                                            <div class="code-block">
+                                                sudo systemctl restart postgresql
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="solution-actions">
+                                        <button class="btn secondary">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                        <button class="btn primary">
+                                            <i class="fas fa-check"></i> Mark as Applied
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-tab-content" id="error-metrics-tab">
+                            <div class="metrics-detail">
+                                <div class="metric-chart-container">
+                                    <h3>Error Occurrence Timeline</h3>
+                                    <div id="modal-error-timeline-chart" class="chart"></div>
+                                </div>
+                                
+                                <div class="metrics-summary">
+                                    <div class="metric-item">
+                                        <div class="metric-label">First Occurrence</div>
+                                        <div class="metric-value">2025-03-05 14:22:10</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Latest Occurrence</div>
+                                        <div class="metric-value">2025-03-06 08:32:15</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Total Occurrences</div>
+                                        <div class="metric-value">12</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Avg. Recovery Time</div>
+                                        <div class="metric-value">22 min</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Impact Score</div>
+                                        <div class="metric-value">8.7/10</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Affected Users</div>
+                                        <div class="metric-value">~120</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="impact-analysis">
+                                    <h3>Impact Analysis</h3>
+                                    <p>This error has significant business impact as it prevents users from accessing core application functionality. Each occurrence affects approximately 120 users and lasts for an average of 22 minutes, resulting in substantial downtime.</p>
+                                    <div class="impact-metrics">
+                                        <div class="impact-metric">
+                                            <div class="impact-label">Estimated Revenue Loss</div>
+                                            <div class="impact-value">$2,450</div>
+                                        </div>
+                                        <div class="impact-metric">
+                                            <div class="impact-label">SLA Violations</div>
+                                            <div class="impact-value">3</div>
+                                        </div>
+                                        <div class="impact-metric">
+                                            <div class="impact-label">User Sessions Affected</div>
+                                            <div class="impact-value">1,440</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-tab-content" id="error-history-tab">
+                            <div class="history-timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">2025-03-06 08:32:15</div>
+                                        <div class="timeline-event">Error Occurred</div>
+                                        <div class="timeline-details">
+                                            <p>Connection timeout: failed to connect to database after 30s</p>
+                                            <p>Severity: <span class="status-badge critical">Critical</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">2025-03-06 08:35:27</div>
+                                        <div class="timeline-event">Error Detected</div>
+                                        <div class="timeline-details">
+                                            <p>Monitoring system alerted DevOps team</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">2025-03-06 08:38:42</div>
+                                        <div class="timeline-event">Status Changed</div>
+                                        <div class="timeline-details">
+                                            <p>Status changed from <span class="status-badge status-new">New</span> to <span class="status-badge status-investigating">Investigating</span></p>
+                                            <p>Assigned to: John Doe</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">2025-03-06 08:42:15</div>
+                                        <div class="timeline-event">Solution Applied</div>
+                                        <div class="timeline-details">
+                                            <p>Solution "Check Network Connectivity" applied</p>
+                                            <p>Identified firewall rule blocking database port</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">2025-03-06 08:47:30</div>
+                                        <div class="timeline-event">Status Changed</div>
+                                        <div class="timeline-details">
+                                            <p>Status changed from <span class="status-badge status-investigating">Investigating</span> to <span class="status-badge status-resolved">Resolved</span></p>
+                                            <p>Resolution: Firewall rule updated to allow traffic on port 5432</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <div class="status-selector">
+                            <label for="update-error-status">Update Status:</label>
+                            <select id="update-error-status" class="form-control">
+                                <option value="new">New</option>
+                                <option value="investigating">Investigating</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn secondary" id="assign-error-btn">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                            <button class="btn primary" id="update-error-btn">
+                                <i class="fas fa-save"></i> Update
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="solution-content">
-                <p class="solution-description">Solution description goes here...</p>
-            </div>
-            <div class="solution-actions">
-                <button class="btn btn-outline btn-sm solution-copy">
-                    <i class="fas fa-copy"></i> Copy
-                </button>
-                <button class="btn btn-primary btn-sm solution-apply">
-                    <i class="fas fa-check"></i> Mark as Applied
-                </button>
-            </div>
         </div>
-    </template>
+    </div>
     
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

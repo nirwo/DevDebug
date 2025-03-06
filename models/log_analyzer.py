@@ -55,17 +55,42 @@ class LogAnalyzer:
     def analyze(self, log_content):
         """
         Analyze the log content to identify errors and their context.
+        Performs deep analysis on the entire log to extract multiple errors and metrics.
         
         Args:
             log_content (str): The content of the log to analyze
             
         Returns:
-            dict: Analysis results including error type, context, and severity
+            dict: Comprehensive analysis results with multiple errors and metrics
         """
+        if not log_content:
+            return {
+                'error_type': 'unknown',
+                'error_message': 'No log content provided',
+                'severity': 'low',
+                'context': [],
+                'metrics': {
+                    'total_lines': 0,
+                    'error_count': 0,
+                    'warning_count': 0,
+                    'info_count': 0
+                },
+                'all_errors': []
+            }
+            
+        # Tokenize the log
+        lines = log_content.split('\n')
+        
+        # Calculate basic metrics
+        metrics = self._calculate_metrics(lines)
+        
         # Identify the technology/framework
         technology = self._identify_technology(log_content)
         
-        # Extract error information
+        # Extract all errors from the log (not just the primary one)
+        all_errors = self._extract_all_errors(lines)
+        
+        # Extract error information for primary error
         error_type, error_message = self._extract_error(log_content)
         
         # Get context around the error
@@ -77,6 +102,12 @@ class LogAnalyzer:
         # Extract relevant code snippets if present
         code_snippets = self._extract_code_snippets(log_content)
         
+        # Identify performance issues
+        performance_issues = self._identify_performance_issues(lines)
+        
+        # Generate markdown summary
+        summary = self._generate_summary(error_type, error_message, metrics, all_errors, technology)
+        
         # Identify potential root causes
         root_causes = self._identify_root_causes(error_type, error_message, context, technology)
         
@@ -87,7 +118,11 @@ class LogAnalyzer:
             'context': context,
             'severity': severity,
             'code_snippets': code_snippets,
-            'root_causes': root_causes
+            'root_causes': root_causes,
+            'metrics': metrics,
+            'all_errors': all_errors,
+            'performance_issues': performance_issues,
+            'summary': summary
         }
     
     def _identify_technology(self, log_content):
@@ -200,6 +235,206 @@ class LogAnalyzer:
             'file_references': file_lines
         }
     
+    def _calculate_metrics(self, lines):
+        """Calculate metrics from log lines for KPI reporting."""
+        total_lines = len(lines)
+        error_count = 0
+        warning_count = 0
+        info_count = 0
+        debug_count = 0
+        exception_count = 0
+        
+        # Count by log level
+        for line in lines:
+            line_lower = line.lower()
+            if 'error' in line_lower or 'exception' in line_lower or 'fail' in line_lower:
+                error_count += 1
+            elif 'warn' in line_lower:
+                warning_count += 1
+            elif 'info' in line_lower:
+                info_count += 1
+            elif 'debug' in line_lower:
+                debug_count += 1
+                
+            # Count exceptions specifically
+            if 'exception' in line_lower or 'traceback' in line_lower:
+                exception_count += 1
+        
+        # Calculate time metrics if timestamps are present
+        time_metrics = self._extract_time_metrics(lines)
+        
+        return {
+            'total_lines': total_lines,
+            'error_count': error_count,
+            'warning_count': warning_count,
+            'info_count': info_count,
+            'debug_count': debug_count,
+            'exception_count': exception_count,
+            'error_ratio': error_count / total_lines if total_lines > 0 else 0,
+            'time_metrics': time_metrics
+        }
+        
+    def _extract_time_metrics(self, lines):
+        """Extract time-related metrics from the log if timestamps are present."""
+        # Try to find timestamps in common formats
+        timestamp_pattern = r'(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[-+]\d{2}:?\d{2})?)'
+        timestamps = []
+        
+        for line in lines:
+            match = re.search(timestamp_pattern, line)
+            if match:
+                try:
+                    # Try to parse the timestamp
+                    ts = match.group(1)
+                    timestamps.append(ts)
+                except:
+                    pass
+        
+        if len(timestamps) >= 2:
+            # Convert to datetime objects with various formats
+            try:
+                # Try ISO format first
+                start_time = timestamps[0]
+                end_time = timestamps[-1]
+                
+                # Return timestamp strings since full parsing is complex
+                return {
+                    'first_timestamp': start_time,
+                    'last_timestamp': end_time,
+                    'timestamp_count': len(timestamps)
+                }
+            except:
+                pass
+                
+        return {
+            'timestamp_count': len(timestamps)
+        }
+        
+    def _extract_all_errors(self, lines):
+        """Extract all errors from the log, not just the primary one."""
+        errors = []
+        
+        # Process each line
+        for i, line in enumerate(lines):
+            # Skip if line is too short
+            if len(line.strip()) < 5:
+                continue
+                
+            # Check for error indicators
+            for error_type, pattern in self.error_patterns.items():
+                if re.search(pattern, line):
+                    # Extract context lines (up to 5 before and after)
+                    context_start = max(0, i - 5)
+                    context_end = min(len(lines), i + 6)
+                    context = lines[context_start:context_end]
+                    
+                    errors.append({
+                        'error_type': error_type,
+                        'error_message': line,
+                        'line_number': i + 1,
+                        'context': context,
+                        'severity': self._quick_severity_check(line)
+                    })
+                    break  # Found an error pattern, move to next line
+        
+        return errors
+        
+    def _quick_severity_check(self, line):
+        """Quickly determine severity based on keywords in the line."""
+        line_lower = line.lower()
+        
+        if 'critical' in line_lower or 'fatal' in line_lower:
+            return 'critical'
+        elif 'error' in line_lower or 'exception' in line_lower or 'fail' in line_lower:
+            return 'high'
+        elif 'warn' in line_lower:
+            return 'medium'
+        else:
+            return 'low'
+            
+    def _identify_performance_issues(self, lines):
+        """Identify performance-related issues in the log."""
+        issues = []
+        
+        # Look for timeout indications
+        timeout_pattern = r'(?i)timeout|timed? out|too (?:much|long)|(?:high|excessive) (?:cpu|memory|load)'
+        
+        # Look for memory issues
+        memory_pattern = r'(?i)memory|heap|out of|allocation|garbage collection'
+        
+        # Look for slow execution
+        slow_pattern = r'(?i)slow|delay|latency|performance|bottleneck'
+        
+        for i, line in enumerate(lines):
+            if re.search(timeout_pattern, line):
+                issues.append({
+                    'type': 'timeout',
+                    'description': 'Possible timeout detected',
+                    'line': line,
+                    'line_number': i + 1
+                })
+            elif re.search(memory_pattern, line):
+                issues.append({
+                    'type': 'memory',
+                    'description': 'Possible memory issue detected',
+                    'line': line,
+                    'line_number': i + 1
+                })
+            elif re.search(slow_pattern, line):
+                issues.append({
+                    'type': 'performance',
+                    'description': 'Possible performance issue detected',
+                    'line': line,
+                    'line_number': i + 1
+                })
+                
+        return issues
+        
+    def _generate_summary(self, error_type, error_message, metrics, all_errors, technology):
+        """Generate a markdown summary of the analysis."""
+        summary_lines = []
+        
+        # Overall assessment
+        if metrics['error_count'] > 0:
+            if metrics['error_count'] > 10:
+                summary_lines.append("## Critical Issue Detected")
+                summary_lines.append(f"Found **{metrics['error_count']}** errors in the log, indicating a serious problem.")
+            else:
+                summary_lines.append("## Error Detected")
+                summary_lines.append(f"Found **{metrics['error_count']}** errors in the log.")
+        else:
+            summary_lines.append("## Log Analysis Complete")
+            summary_lines.append("No errors detected in the log.")
+            
+        # Add time span if available
+        if 'time_metrics' in metrics and 'first_timestamp' in metrics['time_metrics']:
+            summary_lines.append(f"\nLog spans from **{metrics['time_metrics']['first_timestamp']}** to **{metrics['time_metrics']['last_timestamp']}**")
+            
+        # Add technology
+        if technology:
+            summary_lines.append(f"\nDetected technology: **{technology}**")
+            
+        # Add primary error info
+        if error_message:
+            summary_lines.append("\n### Primary Error")
+            summary_lines.append(f"- **Type:** {error_type}")
+            summary_lines.append(f"- **Message:** {error_message}")
+            
+        # Add metrics summary
+        summary_lines.append("\n### Log Metrics")
+        summary_lines.append(f"- Total lines: **{metrics['total_lines']}**")
+        summary_lines.append(f"- Error messages: **{metrics['error_count']}**")
+        summary_lines.append(f"- Warnings: **{metrics['warning_count']}**")
+        summary_lines.append(f"- Info messages: **{metrics['info_count']}**")
+        summary_lines.append(f"- Debug messages: **{metrics['debug_count']}**")
+        summary_lines.append(f"- Exceptions: **{metrics['exception_count']}**")
+        
+        # Error ratio as percentage
+        error_percentage = round(metrics['error_ratio'] * 100, 1)
+        summary_lines.append(f"- Error ratio: **{error_percentage}%** of log lines")
+            
+        return "\n".join(summary_lines)
+        
     def _identify_root_causes(self, error_type, error_message, context, technology):
         """Identify potential root causes based on the error and context."""
         root_causes = []
